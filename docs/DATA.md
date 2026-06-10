@@ -89,6 +89,27 @@ Sites 33, 35, 36 and 39 were retired by the park and are deliberately absent.
 Wil-Bo-Wil (W2) appears in no distance chart; its two routing edges are estimates
 (`EXTRA_EDGES`) and always render as ≈.
 
+## 3b. Water corridors — `src/data/waterways.json` (v0.2)
+
+Display-only geometry that makes paddle legs follow real water on the map.
+Built by `scripts/build_water_routes.py`:
+
+1. OSM water polygons + river/stream lines for the park bbox via Overpass
+   (cached at `scripts/source/osm_water.json`; data © OpenStreetMap
+   contributors, ODbL).
+2. Rasterized to a 30 m grid. Multipolygon relations are assembled into
+   closed rings before filling (big lakes arrive as open fragments). The 23
+   portage tracks are carved as traversable, since a paddling party really
+   does cross them. Sub-240 m mapping gaps between basins that both contain
+   route nodes are bridged automatically (e.g. the Frozen Ocean outlet).
+3. A* per paddle-graph edge (546 edges, from `scripts/dump_edges.ts`),
+   Douglas-Peucker simplified.
+
+Current build: **546/546 corridors, zero fallbacks.** Hike legs need no
+prebuilt data — they snap to the GPX trail/portage tracks at runtime
+(`src/lib/routegeo.ts`). Distances are NEVER taken from this geometry;
+the published charts remain the only source of figures shown to users.
+
 ## 4. Weather — Open-Meteo
 
 - Forecast: `https://api.open-meteo.com/v1/forecast` (16 days)

@@ -278,22 +278,22 @@ table.data td.head { background: var(--parchment-dim); font-weight: 700; text-al
   width: 28px; height: 28px; border-radius: 50%; font-weight: 800;
 }
 
-/* ---------- passport stamps ---------- */
+/* ---------- passport stamps & badges ---------- */
 .stamp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 12px; }
-.stamp {
-  aspect-ratio: 1; border-radius: 50%;
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  text-align: center; padding: 8px; position: relative;
-  border: 3px double var(--rust-deep); color: var(--rust-deep);
-  background: radial-gradient(circle at 50% 42%, rgba(194, 86, 43, 0.08), transparent 70%);
-  font-family: var(--font-display);
+.stamp-cell { display: flex; align-items: center; justify-content: center; }
+.stamp-cell svg { width: 100%; height: auto; }
+.badge-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
+.badge {
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  text-align: center; padding: 12px 8px;
+  border: 2px dashed rgba(46, 42, 34, 0.3); border-radius: var(--radius-lg);
+  color: rgba(46, 42, 34, 0.45); filter: grayscale(1); background: none;
 }
-.stamp .num { font-size: 1.5rem; font-weight: 900; line-height: 1; }
-.stamp .lake { font-size: 0.58rem; text-transform: uppercase; letter-spacing: 0.8px; max-width: 100%; }
-.stamp .year { font-size: 0.66rem; font-weight: 700; margin-top: 2px; }
-.stamp.empty { border: 2px dashed rgba(46, 42, 34, 0.3); color: rgba(46, 42, 34, 0.35); background: none; }
-.stamp.green { border-color: var(--pine-deep); color: var(--pine-deep); }
-.stamp.blue { border-color: var(--water-deep); color: var(--water-deep); }
+.badge.earned {
+  border: var(--border); background: var(--card); color: var(--ink);
+  box-shadow: var(--shadow); filter: none;
+}
+.badge .badge-emoji { font-size: 1.7rem; line-height: 1.1; }
 
 /* ---------- night sky ---------- */
 .night {

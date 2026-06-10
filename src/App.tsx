@@ -6,6 +6,7 @@ import JournalPage from './pages/JournalPage';
 import SitesPage from './pages/SitesPage';
 import SkyPage from './pages/SkyPage';
 import AboutPage from './pages/AboutPage';
+import SharedTripPage from './pages/SharedTripPage';
 
 const TABS = [
   { id: 'map', label: 'Map', icon: <IconMap /> },
@@ -16,11 +17,12 @@ const TABS = [
   { id: 'about', label: 'About', icon: <IconInfo /> },
 ] as const;
 
-type TabId = (typeof TABS)[number]['id'];
+type TabId = (typeof TABS)[number]['id'] | 'view';
 
 function parseHash(): { tab: TabId; param?: string } {
   const h = window.location.hash.replace(/^#\/?/, '');
   const [tab, param] = h.split('/');
+  if (tab === 'view' && param) return { tab: 'view', param };
   if (TABS.some((t) => t.id === tab)) return { tab: tab as TabId, param };
   return { tab: 'map' };
 }
@@ -46,6 +48,7 @@ export default function App() {
       case 'sites': return <SitesPage siteId={route.param} />;
       case 'sky': return <SkyPage />;
       case 'about': return <AboutPage />;
+      case 'view': return <SharedTripPage payload={route.param!} />;
     }
   })();
 

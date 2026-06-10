@@ -9,6 +9,8 @@ import { TRIP_TEMPLATES } from '../data/templates';
 import { placeById } from '../data/sites';
 import { addDaysIso, fmtDate, fmtKm, uid } from '../lib/format';
 import { fmtHours, legHours, route } from '../lib/routing';
+import { encodeTripLink } from '../lib/share';
+import { renderTripCard, shareBlob } from '../lib/sharecard';
 import { applySmartModes, migrateTripModes } from '../lib/tripsmart';
 import { newTrip, useStore } from '../lib/store';
 import type { Trip, TravelMode } from '../types';
@@ -138,6 +140,8 @@ function TripEditor({ initial, isNew }: { initial: Trip; isNew: boolean }) {
   const { data, dispatch } = useStore();
   const [trip, setTrip] = useState<Trip>(initial);
   const [cloudByDate, setCloudByDate] = useState<Record<string, number | null>>({});
+  const [linkCopied, setLinkCopied] = useState(false);
+  const [rendering, setRendering] = useState(false);
 
   const totals = useMemo(
     () => tripTotals(trip, data.settings.paddleKmh, data.settings.hikeKmh),
@@ -334,7 +338,33 @@ function TripEditor({ initial, isNew }: { initial: Trip; isNew: boolean }) {
           <div className="flex" style={{ marginBottom: 16 }}>
             <button className="btn" onClick={save} disabled={!canSave}>Save trip</button>
             <button className="btn ghost small" onClick={() => window.print()} disabled={!canSave}>
-              🖨 Print trip sheet
+              🖨 Print
+            </button>
+            <button
+              className="btn ghost small" disabled={!canSave}
+              onClick={async () => {
+                const url = await encodeTripLink(trip);
+                await navigator.clipboard.writeText(url);
+                setLinkCopied(true);
+                setTimeout(() => setLinkCopied(false), 2500);
+              }}
+            >
+              {linkCopied ? '✓ Link copied!' : '🔗 Share link'}
+            </button>
+            <button
+              className="btn ghost small" disabled={!canSave || rendering}
+              onClick={async () => {
+                setRendering(true);
+                try {
+                  const emojis = data.campers.filter((c) => trip.partyIds.includes(c.id)).map((c) => c.emoji);
+                  const blob = await renderTripCard(trip, data.settings.paddleKmh, data.settings.hikeKmh, emojis);
+                  await shareBlob(blob, `keji-trip-${(trip.name || 'plan').replace(/\W+/g, '-').toLowerCase()}.png`, trip.name || 'Keji trip');
+                } finally {
+                  setRendering(false);
+                }
+              }}
+            >
+              {rendering ? '…' : '🖼 Share card'}
             </button>
             {!isNew && <button className="btn danger small" onClick={remove}>Delete</button>}
           </div>

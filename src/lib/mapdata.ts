@@ -42,10 +42,29 @@ export function haversine(a: [number, number], b: [number, number]): number {
   return 2 * R * Math.asin(Math.sqrt(h));
 }
 
+/**
+ * Display-only approximate coordinates for chart waypoints that are not
+ * Places (estimated from the official Backcountry Guide Map and the chart
+ * relationships). Used to draw route geometry and never for distances —
+ * distances always come from the published charts.
+ */
+export const WAYPOINT_COORDS: Record<string, [number, number]> = {
+  wrmouth: [44.3945, -65.2855], // West River mouth, NW arm of Keji Lake
+  tmmouth: [44.4553, -65.2885], // Thomas Meadow Brook mouth, west Big Dam Lake
+  tmboundary: [44.4608, -65.3005], // Thomas Meadow at the park boundary
+  fairybay: [44.3955, -65.2200], // Fairy Bay, NE Kejimkujik Lake
+  lanternrock: [44.3553, -65.2349], // Lantern Rock, southern Keji Lake
+  luxie: [44.3760, -65.2455], // Luxie Cove picnic site, west shore
+  lrmersey: [44.3095, -65.1760], // lower Mersey at the park boundary
+  pebbleboundary: [44.2965, -65.3590], // Pebbleloggitch Stillwater boundary
+  lucifee: [44.3320, -65.3810], // Lucifee Brook arm, NW Peskawa Lake
+};
+
 /** Coordinates for any routing node we can place on the map. */
 export function nodeCoord(id: string): [number, number] | null {
   const p = placeById.get(id);
   if (p) return [p.lat, p.lng];
   if (portageMid[id]) return portageMid[id];
+  if (WAYPOINT_COORDS[id]) return WAYPOINT_COORDS[id];
   return null;
 }

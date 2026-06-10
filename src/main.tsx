@@ -12,3 +12,10 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     </StoreProvider>
   </React.StrictMode>,
 );
+
+// app-shell offline caching (production only — the SW would fight Vite's dev server)
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(() => {/* offline-first is best-effort */});
+  });
+}
