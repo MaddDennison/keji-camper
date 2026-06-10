@@ -144,8 +144,10 @@ export function newTrip(): Trip {
     id: uid(),
     name: '',
     startDate: '',
-    stops: [],
-    modes: [],
+    // start → night 1 → finish scaffold; the finish mirrors the start until edited
+    stops: ['', '', ''],
+    modes: ['paddle', 'paddle'],
+    modesLocked: [false, false],
     partyIds: [],
     notes: '',
     status: 'planned',

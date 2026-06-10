@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { navigate } from '../App';
+import Stamp from '../components/Stamp';
 import { directoryOrder, placeById, PLACES } from '../data/sites';
+import { computeBadges } from '../lib/badges';
+import { renderMemoryCard, shareBlob } from '../lib/sharecard';
 import { fmtDate, paddles, todayIso, uid } from '../lib/format';
 import { compressPhoto, useStore } from '../lib/store';
 import type { Camper, Memory } from '../types';
@@ -156,8 +159,16 @@ function MemoryCard({ memory, onEdit }: { memory: Memory; onEdit: () => void }) 
           {memory.photos.map((p, i) => <img key={i} src={p} alt="" loading="lazy" />)}
         </div>
       )}
-      <div style={{ marginTop: 8 }}>
+      <div className="flex" style={{ marginTop: 8 }}>
         <button className="btn ghost small" onClick={onEdit}>Edit</button>
+        <button
+          className="btn ghost small"
+          title="Share as an image card"
+          onClick={async () => {
+            const blob = await renderMemoryCard(memory);
+            await shareBlob(blob, `keji-memory-${memory.date}.png`, memory.title || 'Keji memory');
+          }}
+        >📤 Share card</button>
       </div>
     </article>
   );
@@ -273,13 +284,14 @@ function MemoryForm({
 }
 
 function Passport({ visited, memories }: { visited: Set<string>; memories: Memory[] }) {
+  const { data } = useStore();
   const campPlaces = PLACES.filter((p) => p.kind !== 'launch');
   const stamped = campPlaces.filter((p) => visited.has(p.id));
-  const colors = ['', 'green', 'blue'];
+  const badges = computeBadges(data.memories, data.trips);
 
   const yearFor = (id: string) => {
     const ms = memories.filter((m) => m.placeId === id).map((m) => m.date.slice(0, 4));
-    return ms.sort()[0] ?? '';
+    return ms.sort()[0] ?? undefined;
   };
 
   return (
@@ -292,21 +304,25 @@ function Passport({ visited, memories }: { visited: Set<string>; memories: Memor
         Collect them all and you’ve slept everywhere a person can sleep in the Keji backcountry.
       </p>
       <div className="stamp-grid">
-        {campPlaces.map((p, i) => {
-          const got = visited.has(p.id);
-          return (
-            <div
-              key={p.id}
-              className={`stamp ${got ? colors[i % 3] : 'empty'}`}
-              style={got ? { transform: `rotate(${((i * 47) % 13) - 6}deg)` } : undefined}
-              title={p.name}
-            >
-              <div className="num">{p.label}</div>
-              <div className="lake">{p.lake.split('/')[0].replace('Lake', '').trim() || p.lake}</div>
-              {got && <div className="year">EST’D {yearFor(p.id) || '——'}</div>}
-            </div>
-          );
-        })}
+        {campPlaces.map((p) => (
+          <div key={p.id} className="stamp-cell" title={p.name}>
+            <Stamp place={p} ghost={!visited.has(p.id)} year={yearFor(p.id)} />
+          </div>
+        ))}
+      </div>
+
+      <div className="section-head" style={{ marginTop: 22 }}>
+        <h2>Badges</h2>
+        <span className="sub">{badges.filter((b) => b.earned).length} of {badges.length} earned</span>
+      </div>
+      <div className="badge-grid">
+        {badges.map((b) => (
+          <div key={b.id} className={`badge ${b.earned ? 'earned' : ''}`} title={b.hint}>
+            <span className="badge-emoji">{b.emoji}</span>
+            <b>{b.name}</b>
+            <span className="tiny muted">{b.hint}</span>
+          </div>
+        ))}
       </div>
     </>
   );

@@ -114,13 +114,35 @@ campers[] · trips[] · memories[] · settings
   `crew_id` scoping, row-level security, photos to object storage (they are
   data-URLs today specifically to keep that swap mechanical).
 
-## 7. Map
+## 7. Map & route geometry (v0.2)
 
 `MapView` is created once per mount; props drive three reactive layers:
-markers (recoloured on selection/visited), a route overlay (polylines through
-routed node coordinates; paddle solid teal, hike dashed rust), and static
+markers (recoloured on selection/visited), a route overlay, and static
 overlays (boundary, trails, portages with computed lengths from the GPX tracks).
 Tiles: Esri World Topo (default), OSM, Esri Imagery — all keyless.
+
+Route overlays are true-to-terrain (`src/lib/routegeo.ts`):
+- **hike** hops A* over a network built at runtime from the shipped trail +
+  portage tracks (tracks joined where endpoints come within 120 m; stops
+  snapped within 400 m)
+- **paddle** hops look up precomputed water corridors
+  (`src/data/waterways.json`, see docs/DATA.md §3b)
+- any hop the data can't support renders as a dotted **schematic** line
+Distances and times always come from the charts, never from this geometry.
+
+## 7b. Sharing (v0.2)
+
+- **Share links**: the trip is deflate-compressed into the URL fragment
+  (`#/view/<payload>`, `src/lib/share.ts`) — a read-only viewer that needs no
+  account and saves nothing until the viewer clicks “save a copy”.
+- **Share cards**: `src/lib/sharecard.ts` draws 1080×1350 trip cards and
+  1080×1080 memory cards on canvas from our own vector data (no tiles → no
+  CORS/licensing issues), delivered via the Web Share API or download.
+- **Stamps** (`src/components/Stamp.tsx`): deterministic generative SVG per
+  site (id seeds rotation/ink/wear); **badges** (`src/lib/badges.ts`) are pure
+  functions over trips + memories.
+- **PWA shell**: `public/sw.js` caches same-origin assets stale-while-
+  revalidate so the app opens offline; tiles and weather stay network-only.
 
 ## 8. Testing & CI
 

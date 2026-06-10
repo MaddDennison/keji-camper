@@ -1,11 +1,17 @@
 import { useMemo, useState } from 'react';
 import { navigate } from '../App';
 import MapView, { type RouteOverlay } from '../components/MapView';
+import PrintSheet from '../components/PrintSheet';
 import SkyPanel from '../components/SkyPanel';
+import StopCards from '../components/StopCards';
 import WeatherPanel from '../components/WeatherPanel';
-import { directoryOrder, placeById } from '../data/sites';
-import { addDaysIso, fmtDate, fmtKm, todayIso, uid } from '../lib/format';
-import { fmtHours, legHours, nodesForMode, route } from '../lib/routing';
+import { TRIP_TEMPLATES } from '../data/templates';
+import { placeById } from '../data/sites';
+import { addDaysIso, fmtDate, fmtKm, uid } from '../lib/format';
+import { fmtHours, legHours, route } from '../lib/routing';
+import { encodeTripLink } from '../lib/share';
+import { renderTripCard, shareBlob } from '../lib/sharecard';
+import { applySmartModes, migrateTripModes } from '../lib/tripsmart';
 import { newTrip, useStore } from '../lib/store';
 import type { Trip, TravelMode } from '../types';
 
@@ -15,12 +21,29 @@ function placeName(id: string) {
   return placeById.get(id)?.name ?? id;
 }
 
+function tripFromTemplate(tplId: string): Trip | null {
+  const tpl = TRIP_TEMPLATES.find((t) => t.id === tplId);
+  if (!tpl) return null;
+  return {
+    ...newTrip(),
+    name: tpl.name,
+    stops: [...tpl.stops],
+    modes: [...tpl.modes],
+    modesLocked: tpl.modes.map(() => true),
+    notes: tpl.blurb,
+  };
+}
+
 export default function TripsPage({ tripId }: { tripId?: string }) {
-  const { data, dispatch } = useStore();
-  const editing = tripId === 'new' ? newTrip() : data.trips.find((t) => t.id === tripId);
+  const { data } = useStore();
+
+  const editing =
+    tripId === 'new' ? newTrip()
+    : tripId?.startsWith('tpl-') ? tripFromTemplate(tripId.slice(4))
+    : data.trips.find((t) => t.id === tripId);
 
   if (editing) {
-    return <TripEditor key={editing.id} initial={editing} isNew={tripId === 'new'} />;
+    return <TripEditor key={tripId} initial={migrateTripModes(editing)} isNew={!data.trips.some((t) => t.id === editing.id)} />;
   }
 
   const trips = [...data.trips].sort((a, b) => (b.startDate || '').localeCompare(a.startDate || ''));
@@ -37,17 +60,35 @@ export default function TripsPage({ tripId }: { tripId?: string }) {
         <div className="empty-state card">
           <div className="big">🛶</div>
           <p><b>No trips yet.</b></p>
-          <p className="small">
-            Start with a classic: Jakes Landing → Site 13 for a first night, or the
-            Big Dam → Frozen Ocean loop over three days.
-          </p>
-          <button className="btn" onClick={() => navigate('trips', 'new')}>Plan your first trip</button>
+          <p className="small">Start from a classic below, or build your own from scratch.</p>
         </div>
       )}
 
       <div className="grid cols-2">
         {trips.map((t) => (
           <TripCard key={t.id} trip={t} paddleKmh={data.settings.paddleKmh} hikeKmh={data.settings.hikeKmh} />
+        ))}
+      </div>
+
+      <div className="section-head" style={{ marginTop: 24 }}>
+        <h2>Start from a classic</h2>
+        <span className="sub">the routes everyone does first — for good reason</span>
+      </div>
+      <div className="grid cols-2">
+        {TRIP_TEMPLATES.map((tpl) => (
+          <div key={tpl.id} className="card" style={{ marginBottom: 0 }}>
+            <div className="flex">
+              <h3 style={{ margin: 0 }}>{tpl.emoji} {tpl.name}</h3>
+              <span className="chip muted right">{tpl.nights} night{tpl.nights === 1 ? '' : 's'}</span>
+            </div>
+            <p className="small muted" style={{ margin: '6px 0' }}>
+              {tpl.stops.map(placeName).join(' → ')}
+            </p>
+            <p className="small">{tpl.blurb}</p>
+            <button className="btn secondary small" onClick={() => navigate('trips', `tpl-${tpl.id}`)}>
+              Use this route
+            </button>
+          </div>
         ))}
       </div>
     </main>
@@ -58,21 +99,19 @@ function tripTotals(trip: Trip, paddleKmh: number, hikeKmh: number) {
   let km = 0;
   let hours = 0;
   let allExact = true;
-  const legs: { from: string; to: string; mode: TravelMode; km: number | null; exact: boolean }[] = [];
   for (let i = 0; i < trip.stops.length - 1; i++) {
+    if (!trip.stops[i] || !trip.stops[i + 1]) continue;
     const mode = trip.modes[i] ?? 'paddle';
     const r = route(mode, trip.stops[i], trip.stops[i + 1]);
     if (r) {
       km += r.km;
       hours += legHours(r.km, mode, mode === 'paddle' ? paddleKmh : hikeKmh);
       if (!r.exact) allExact = false;
-      legs.push({ from: trip.stops[i], to: trip.stops[i + 1], mode, km: r.km, exact: r.exact });
     } else {
       allExact = false;
-      legs.push({ from: trip.stops[i], to: trip.stops[i + 1], mode, km: null, exact: false });
     }
   }
-  return { km, hours, allExact, legs };
+  return { km, hours, allExact };
 }
 
 function TripCard({ trip, paddleKmh, hikeKmh }: { trip: Trip; paddleKmh: number; hikeKmh: number }) {
@@ -88,7 +127,7 @@ function TripCard({ trip, paddleKmh, hikeKmh }: { trip: Trip; paddleKmh: number;
         {trip.startDate ? fmtDate(trip.startDate) : 'no date'} · {nights} night{nights === 1 ? '' : 's'}
       </div>
       <p className="small" style={{ margin: '8px 0' }}>
-        {trip.stops.map(placeName).join(' → ') || 'No stops yet'}
+        {trip.stops.filter(Boolean).map(placeName).join(' → ') || 'No stops yet'}
       </p>
       <div className="small">
         <b>{fmtKm(km)}</b> · ~{fmtHours(hours)} travel
@@ -101,26 +140,80 @@ function TripEditor({ initial, isNew }: { initial: Trip; isNew: boolean }) {
   const { data, dispatch } = useStore();
   const [trip, setTrip] = useState<Trip>(initial);
   const [cloudByDate, setCloudByDate] = useState<Record<string, number | null>>({});
+  const [linkCopied, setLinkCopied] = useState(false);
+  const [rendering, setRendering] = useState(false);
 
   const totals = useMemo(
     () => tripTotals(trip, data.settings.paddleKmh, data.settings.hikeKmh),
     [trip, data.settings],
   );
 
-  const overlay: RouteOverlay[] = useMemo(
-    () =>
-      totals.legs.map((l) => {
-        const r = route(l.mode, l.from, l.to);
-        return { nodes: r ? r.path : [l.from, l.to], mode: l.mode };
-      }),
-    [totals],
-  );
+  const overlay: RouteOverlay[] = useMemo(() => {
+    const legs: RouteOverlay[] = [];
+    for (let i = 0; i < trip.stops.length - 1; i++) {
+      if (!trip.stops[i] || !trip.stops[i + 1]) continue;
+      const mode = trip.modes[i] ?? 'paddle';
+      const r = route(mode, trip.stops[i], trip.stops[i + 1]);
+      legs.push({ nodes: r ? r.path : [trip.stops[i], trip.stops[i + 1]], mode });
+    }
+    return legs;
+  }, [trip.stops, trip.modes]);
 
-  const stopChoices = useMemo(() => {
-    const paddleNodes = nodesForMode('paddle');
-    const hikeNodes = nodesForMode('hike');
-    return directoryOrder().filter((p) => paddleNodes.has(p.id) || hikeNodes.has(p.id));
-  }, []);
+  /**
+   * Single entry point for stop edits (select / add / remove / reorder).
+   * - editing the START mirrors the FINISH while the finish is empty or still
+   *   equal to the old start (loop trips are the norm)
+   * - a single changed slot unlocks only its adjacent legs; a reorder
+   *   (multiple slots changed) re-infers every mode
+   */
+  const updateStops = (nextStops: string[]) => {
+    const old = trip.stops;
+    let stops = nextStops;
+    let locked: boolean[];
+
+    if (stops.length === old.length) {
+      const changed = stops.map((s, i) => (s !== old[i] ? i : -1)).filter((i) => i !== -1);
+      if (changed.length === 1 && changed[0] === 0) {
+        const last = stops.length - 1;
+        if (last > 0 && (old[last] === '' || old[last] === old[0])) {
+          stops = [...stops];
+          stops[last] = stops[0]; // keep the loop closed until the user says otherwise
+        }
+      }
+      if (changed.length <= 1) {
+        locked = [...(trip.modesLocked ?? [])];
+        for (const c of changed) {
+          if (c - 1 >= 0) locked[c - 1] = false;
+          if (c < locked.length) locked[c] = false;
+        }
+        // a mirrored finish change also unlocks its leg
+        if (stops !== nextStops) locked[stops.length - 2] = false;
+      } else {
+        locked = stops.slice(1).map(() => false); // reorder: re-infer everything
+      }
+    } else if (stops.length > old.length) {
+      locked = [...(trip.modesLocked ?? []), false]; // stop appended
+    } else {
+      // a stop was removed — find where, splice the matching leg lock
+      let k = old.findIndex((s, i) => stops[i] !== s);
+      if (k === -1) k = old.length - 1;
+      locked = [...(trip.modesLocked ?? [])];
+      locked.splice(Math.max(0, k - 1), 1);
+      if (k - 1 >= 0 && k - 1 < locked.length) locked[k - 1] = false;
+    }
+
+    const smart = applySmartModes({ stops, modes: trip.modes, modesLocked: locked });
+    setTrip({ ...trip, stops, ...smart });
+  };
+
+  const pickMode = (i: number, mode: TravelMode) => {
+    const modes = [...trip.modes];
+    const locked = [...(trip.modesLocked ?? trip.modes.map(() => false))];
+    modes[i] = mode;
+    locked[i] = true;
+    const smart = applySmartModes({ stops: trip.stops, modes, modesLocked: locked });
+    setTrip({ ...trip, ...smart });
+  };
 
   const save = () => {
     dispatch({ type: 'trip/save', trip });
@@ -133,32 +226,12 @@ function TripEditor({ initial, isNew }: { initial: Trip; isNew: boolean }) {
     }
   };
 
-  const setStop = (i: number, id: string) => {
-    const stops = [...trip.stops];
-    stops[i] = id;
-    setTrip({ ...trip, stops });
-  };
-  const addStop = () => {
-    const stops = [...trip.stops, ''];
-    const modes = trip.stops.length >= 1 ? [...trip.modes, trip.modes[trip.modes.length - 1] ?? 'paddle'] : trip.modes;
-    setTrip({ ...trip, stops, modes });
-  };
-  const removeStop = (i: number) => {
-    const stops = trip.stops.filter((_, k) => k !== i);
-    const modes = [...trip.modes];
-    modes.splice(Math.max(0, i - 1), 1);
-    setTrip({ ...trip, stops, modes });
-  };
-  const setMode = (i: number, mode: TravelMode) => {
-    const modes = [...trip.modes];
-    modes[i] = mode;
-    setTrip({ ...trip, modes });
-  };
-
   const nights = Math.max(1, trip.stops.length - 2 || 1);
+  const canSave = trip.stops.filter(Boolean).length >= 2;
 
   return (
     <main className="page">
+      <PrintSheet trip={trip} campers={data.campers} paddleKmh={data.settings.paddleKmh} hikeKmh={data.settings.hikeKmh} />
       <div className="section-head">
         <h2>{isNew ? 'New trip' : trip.name || 'Edit trip'}</h2>
         <button className="btn ghost small right" onClick={() => navigate('trips')}>← All trips</button>
@@ -236,39 +309,24 @@ function TripEditor({ initial, isNew }: { initial: Trip; isNew: boolean }) {
           <div className="card">
             <h3>Route</h3>
             <p className="tiny muted">
-              Pick stops in order: launch → site(s) → take-out. Distances come from the official
-              charts (paddling figures include portages); ≈ marks legs stitched across charts.
+              Drag the cards (or use ▲▼) to reorder. Travel modes are picked automatically from
+              each site’s access — tap 🛶/🥾 to override. Distances come from the official charts;
+              ≈ marks legs stitched across charts.
             </p>
-            {trip.stops.map((stop, i) => (
-              <div key={i}>
-                {i > 0 && (
-                  <div className="leg-row" style={{ borderBottom: 'none', paddingLeft: 24 }}>
-                    <ModeLegRow
-                      mode={trip.modes[i - 1] ?? 'paddle'}
-                      onMode={(m) => setMode(i - 1, m)}
-                      leg={totals.legs[i - 1]}
-                      paddleKmh={data.settings.paddleKmh}
-                      hikeKmh={data.settings.hikeKmh}
-                    />
-                  </div>
-                )}
-                <div className="flex">
-                  <span className="tiny muted nowrap" style={{ width: 56 }}>
-                    {i === 0 ? 'start' : i === trip.stops.length - 1 ? 'finish' : `night ${i}`}
-                  </span>
-                  <select style={{ flex: 1 }} value={stop} onChange={(e) => setStop(i, e.target.value)}>
-                    <option value="">— choose a place —</option>
-                    {stopChoices.map((p) => (
-                      <option key={p.id} value={p.id}>{p.name}</option>
-                    ))}
-                  </select>
-                  <button className="btn ghost small" onClick={() => removeStop(i)} aria-label="Remove stop">✕</button>
-                </div>
-              </div>
-            ))}
+            <StopCards
+              stops={trip.stops}
+              modes={trip.modes}
+              modesLocked={trip.modesLocked ?? trip.modes.map(() => false)}
+              paddleKmh={data.settings.paddleKmh}
+              hikeKmh={data.settings.hikeKmh}
+              onStopsChange={updateStops}
+              onModePick={pickMode}
+            />
             <div className="flex" style={{ marginTop: 10 }}>
-              <button className="btn secondary small" onClick={addStop}>+ Add stop</button>
-              {trip.stops.length > 1 && (
+              <button className="btn secondary small" onClick={() => updateStops([...trip.stops, ''])}>
+                + Add stop
+              </button>
+              {trip.stops.filter(Boolean).length > 1 && (
                 <span className="small right">
                   <b>{fmtKm(totals.km)}</b> · ~{fmtHours(totals.hours)} total
                   {!totals.allExact && <span className="muted"> (incl. estimates)</span>}
@@ -278,8 +336,35 @@ function TripEditor({ initial, isNew }: { initial: Trip; isNew: boolean }) {
           </div>
 
           <div className="flex" style={{ marginBottom: 16 }}>
-            <button className="btn" onClick={save} disabled={trip.stops.filter(Boolean).length < 2}>
-              Save trip
+            <button className="btn" onClick={save} disabled={!canSave}>Save trip</button>
+            <button className="btn ghost small" onClick={() => window.print()} disabled={!canSave}>
+              🖨 Print
+            </button>
+            <button
+              className="btn ghost small" disabled={!canSave}
+              onClick={async () => {
+                const url = await encodeTripLink(trip);
+                await navigator.clipboard.writeText(url);
+                setLinkCopied(true);
+                setTimeout(() => setLinkCopied(false), 2500);
+              }}
+            >
+              {linkCopied ? '✓ Link copied!' : '🔗 Share link'}
+            </button>
+            <button
+              className="btn ghost small" disabled={!canSave || rendering}
+              onClick={async () => {
+                setRendering(true);
+                try {
+                  const emojis = data.campers.filter((c) => trip.partyIds.includes(c.id)).map((c) => c.emoji);
+                  const blob = await renderTripCard(trip, data.settings.paddleKmh, data.settings.hikeKmh, emojis);
+                  await shareBlob(blob, `keji-trip-${(trip.name || 'plan').replace(/\W+/g, '-').toLowerCase()}.png`, trip.name || 'Keji trip');
+                } finally {
+                  setRendering(false);
+                }
+              }}
+            >
+              {rendering ? '…' : '🖼 Share card'}
             </button>
             {!isNew && <button className="btn danger small" onClick={remove}>Delete</button>}
           </div>
@@ -318,40 +403,5 @@ function TripEditor({ initial, isNew }: { initial: Trip; isNew: boolean }) {
         </div>
       </div>
     </main>
-  );
-}
-
-function ModeLegRow({
-  mode, onMode, leg, paddleKmh, hikeKmh,
-}: {
-  mode: TravelMode;
-  onMode: (m: TravelMode) => void;
-  leg?: { km: number | null; exact: boolean };
-  paddleKmh: number;
-  hikeKmh: number;
-}) {
-  return (
-    <>
-      <button
-        className={`btn small ${mode === 'paddle' ? 'secondary' : 'ghost'}`}
-        onClick={() => onMode('paddle')}
-        title="Paddle this leg"
-      >🛶</button>
-      <button
-        className={`btn small ${mode === 'hike' ? 'secondary' : 'ghost'}`}
-        onClick={() => onMode('hike')}
-        title="Hike this leg"
-      >🥾</button>
-      {leg && leg.km !== null ? (
-        <span className="small muted right nowrap">
-          {fmtKm(leg.km)} · ~{fmtHours(legHours(leg.km, mode, mode === 'paddle' ? paddleKmh : hikeKmh))}
-          {!leg.exact && ' ≈'}
-        </span>
-      ) : (
-        <span className="small right" style={{ color: '#9c4220' }}>
-          no {mode} route in the charts between these stops
-        </span>
-      )}
-    </>
   );
 }

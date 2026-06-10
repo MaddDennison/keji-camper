@@ -1,7 +1,8 @@
 import L from 'leaflet';
 import { useEffect, useRef } from 'react';
 import { PLACES } from '../data/sites';
-import { GEO, nodeCoord, portageMeters } from '../lib/mapdata';
+import { GEO, portageMeters } from '../lib/mapdata';
+import { legGeometry } from '../lib/routegeo';
 import type { Place, TravelMode } from '../types';
 
 export interface RouteOverlay {
@@ -141,7 +142,7 @@ export default function MapView({ selectedId, visited, routeOverlay, onSelect, h
     }
   }, [selectedId, visited]);
 
-  // route overlay
+  // route overlay — true-to-terrain geometry where the data allows (v0.2 F4)
   useEffect(() => {
     const layer = routeLayerRef.current;
     if (!layer) return;
@@ -149,20 +150,23 @@ export default function MapView({ selectedId, visited, routeOverlay, onSelect, h
     if (!routeOverlay) return;
     const all: [number, number][] = [];
     routeOverlay.forEach((leg, i) => {
-      const pts = leg.nodes
-        .map((id) => nodeCoord(id))
-        .filter((c): c is [number, number] => !!c);
-      if (pts.length < 2) return;
-      all.push(...pts);
-      L.polyline(pts, {
-        color: leg.mode === 'paddle' ? '#3f6f6a' : '#c2562b',
-        weight: 4.5,
-        opacity: 0.9,
-        dashArray: leg.mode === 'paddle' ? undefined : '2 8',
-        lineCap: 'round',
-      })
-        .bindTooltip(`Leg ${i + 1} (${leg.mode})`, { sticky: true })
-        .addTo(layer);
+      const color = leg.mode === 'paddle' ? '#3f6f6a' : '#c2562b';
+      for (const seg of legGeometry(leg.mode, leg.nodes)) {
+        if (seg.points.length < 2) continue;
+        all.push(...seg.points);
+        L.polyline(seg.points, {
+          color,
+          weight: seg.schematic ? 3 : 4.5,
+          opacity: seg.schematic ? 0.55 : 0.9,
+          dashArray: seg.schematic ? '2 10' : leg.mode === 'hike' ? '8 6' : undefined,
+          lineCap: 'round',
+        })
+          .bindTooltip(
+            `Leg ${i + 1} (${leg.mode}${seg.schematic ? ' · schematic line' : ''})`,
+            { sticky: true },
+          )
+          .addTo(layer);
+      }
     });
     if (all.length > 1 && mapRef.current) {
       mapRef.current.fitBounds(L.latLngBounds(all).pad(0.18));

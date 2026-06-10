@@ -278,22 +278,22 @@ table.data td.head { background: var(--parchment-dim); font-weight: 700; text-al
   width: 28px; height: 28px; border-radius: 50%; font-weight: 800;
 }
 
-/* ---------- passport stamps ---------- */
+/* ---------- passport stamps & badges ---------- */
 .stamp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 12px; }
-.stamp {
-  aspect-ratio: 1; border-radius: 50%;
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  text-align: center; padding: 8px; position: relative;
-  border: 3px double var(--rust-deep); color: var(--rust-deep);
-  background: radial-gradient(circle at 50% 42%, rgba(194, 86, 43, 0.08), transparent 70%);
-  font-family: var(--font-display);
+.stamp-cell { display: flex; align-items: center; justify-content: center; }
+.stamp-cell svg { width: 100%; height: auto; }
+.badge-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
+.badge {
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  text-align: center; padding: 12px 8px;
+  border: 2px dashed rgba(46, 42, 34, 0.3); border-radius: var(--radius-lg);
+  color: rgba(46, 42, 34, 0.45); filter: grayscale(1); background: none;
 }
-.stamp .num { font-size: 1.5rem; font-weight: 900; line-height: 1; }
-.stamp .lake { font-size: 0.58rem; text-transform: uppercase; letter-spacing: 0.8px; max-width: 100%; }
-.stamp .year { font-size: 0.66rem; font-weight: 700; margin-top: 2px; }
-.stamp.empty { border: 2px dashed rgba(46, 42, 34, 0.3); color: rgba(46, 42, 34, 0.35); background: none; }
-.stamp.green { border-color: var(--pine-deep); color: var(--pine-deep); }
-.stamp.blue { border-color: var(--water-deep); color: var(--water-deep); }
+.badge.earned {
+  border: var(--border); background: var(--card); color: var(--ink);
+  box-shadow: var(--shadow); filter: none;
+}
+.badge .badge-emoji { font-size: 1.7rem; line-height: 1.1; }
 
 /* ---------- night sky ---------- */
 .night {
@@ -342,6 +342,59 @@ table.data td.head { background: var(--parchment-dim); font-weight: 700; text-al
   border-bottom: 1px dashed var(--ink-soft); padding: 7px 0; font-size: 0.92rem;
 }
 .leg-row .mode-ic { flex: none; width: 26px; text-align: center; }
+
+/* ---------- trip stop cards (v0.2) ---------- */
+.stop-card {
+  display: flex; align-items: center; gap: 10px;
+  background: #fffdf6; border: 2px solid var(--ink); border-radius: var(--radius);
+  padding: 8px 10px; margin: 4px 0;
+  box-shadow: 2px 2px 0 rgba(46, 42, 34, 0.18);
+  touch-action: none;
+}
+.stop-card.dragging { opacity: 0.55; border-style: dashed; }
+.stop-card.drop-target { outline: 3px solid var(--gold); outline-offset: 2px; }
+.stop-card select { width: 100%; border: 1.5px solid var(--ink-soft); border-radius: 7px; padding: 6px 8px; background: #fff; margin-top: 3px; }
+.drag-handle {
+  cursor: grab; background: var(--parchment-dim); color: var(--ink-soft);
+  border: 1.5px solid var(--ink-soft); border-radius: 7px;
+  width: 30px; height: 44px; font-size: 1rem; flex: none;
+  touch-action: none; user-select: none;
+}
+.drag-handle:active { cursor: grabbing; background: var(--gold); color: var(--ink); }
+.role-tag {
+  font-size: 0.6rem; font-weight: 800; letter-spacing: 1.2px;
+  background: var(--pine); color: var(--parchment);
+  padding: 2px 7px; border-radius: 5px; flex: none;
+}
+.stop-card-btns { display: flex; flex-direction: column; gap: 3px; flex: none; }
+.stop-card-btns .mini {
+  background: none; border: 1.5px solid var(--ink-soft); border-radius: 5px;
+  color: var(--ink-soft); cursor: pointer; font-size: 0.62rem; line-height: 1.4; padding: 1px 6px;
+}
+.stop-card-btns .mini:disabled { opacity: 0.3; cursor: default; }
+.stop-card-btns .mini.danger { color: #8c2f23; border-color: #8c2f23; }
+.auto-tag {
+  font-size: 0.6rem; font-weight: 800; letter-spacing: 1px; text-transform: uppercase;
+  color: var(--water-deep); border: 1.5px dashed var(--water-deep);
+  border-radius: 99px; padding: 1px 7px;
+}
+.leg-connector { height: 8px; border-left: 3px dotted var(--ink-soft); margin-left: 24px; }
+
+/* ---------- print trip sheet (v0.2) ---------- */
+.print-sheet { display: none; }
+@media print {
+  header.topbar, nav.tabbar, .map-legend { display: none !important; }
+  main.page > *:not(.print-sheet) { display: none !important; }
+  main.page { padding: 0; max-width: none; }
+  body { background: #fff; }
+  .print-sheet { display: block; font-size: 12px; color: #000; }
+  .print-sheet h1 { font-size: 20px; margin-bottom: 2px; }
+  .print-sheet h2 { font-size: 14px; margin: 14px 0 4px; border-bottom: 1.5px solid #000; }
+  .print-sheet table { width: 100%; border-collapse: collapse; }
+  .print-sheet th, .print-sheet td { border: 1px solid #444; padding: 3px 6px; text-align: left; }
+  .print-sheet .float-plan p { margin: 10px 0; }
+  .print-sheet .print-foot { margin-top: 16px; font-size: 9px; color: #555; }
+}
 
 dialog.modal {
   border: var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-lg);
