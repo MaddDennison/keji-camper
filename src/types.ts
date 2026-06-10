@@ -31,6 +31,8 @@ export interface Trip {
   startDate: string; // ISO yyyy-mm-dd of night 1
   stops: string[]; // ordered place ids; legs derived between consecutive stops
   modes: TravelMode[]; // modes[i] = mode of leg stops[i] -> stops[i+1]
+  /** modesLocked[i]: the user explicitly chose modes[i]; smart inference must not touch it */
+  modesLocked?: boolean[];
   partyIds: string[];
   notes: string;
   status: TripStatus;
