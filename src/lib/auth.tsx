@@ -35,18 +35,38 @@ const INERT: AuthCtx = {
 
 const Ctx = createContext<AuthCtx>(INERT);
 
-function friendlyError(message: string): string {
+function friendlyError(message: string, code?: string): string {
   const m = message.toLowerCase();
-  if (m.includes('database error')) {
+  const c = (code ?? '').toLowerCase();
+  if (m.includes('database error') || c.includes('unexpected_failure')) {
     return 'That email is not on the invite list yet — ask an admin for an invite.';
   }
-  if (m.includes('rate limit') || m.includes('rate_limit')) {
-    return 'Too many sign-in attempts — wait a minute and try again.';
+  // Supabase's send cooldown / hourly cap. The message wording varies
+  // ("For security purposes, you can only request this after N seconds.",
+  // "email rate limit exceeded"), so match the code and several phrasings —
+  // and surface the exact wait if it's in the message.
+  if (
+    c.includes('over_email_send_rate_limit') ||
+    c.includes('rate_limit') ||
+    m.includes('rate limit') ||
+    m.includes('rate_limit') ||
+    m.includes('only request this') ||
+    m.includes('security purposes')
+  ) {
+    const after = message.match(/after (\d+) seconds?/i);
+    return after
+      ? `Link already on its way — please wait ${after[1]}s before requesting another.`
+      : 'Link already on its way — please wait a few seconds before requesting another.';
   }
   if (m.includes('invalid') && m.includes('email')) {
     return 'That does not look like a valid email address.';
   }
-  return 'Could not send the sign-in link — please try again.';
+  // Unknown error: surface the server's own message (trimmed) rather than a
+  // vague generic, so the next surprise is at least legible.
+  const detail = message.trim().replace(/\s+/g, ' ').slice(0, 140);
+  return detail
+    ? `Could not send the sign-in link — ${detail}`
+    : 'Could not send the sign-in link — please try again.';
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -86,7 +106,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         email,
         options: { emailRedirectTo: SITE_URL },
       });
-      if (error) return { error: friendlyError(error.message) };
+      if (error) return { error: friendlyError(error.message, (error as { code?: string }).code) };
       return {};
     } catch {
       return { error: 'Could not send the sign-in link — check your connection and try again.' };
