@@ -7,6 +7,8 @@ import SitesPage from './pages/SitesPage';
 import SkyPage from './pages/SkyPage';
 import AboutPage from './pages/AboutPage';
 import SharedTripPage from './pages/SharedTripPage';
+import AdminPage from './pages/AdminPage';
+import AuthBar, { NoticeBanner } from './components/AuthBar';
 
 const TABS = [
   { id: 'map', label: 'Map', icon: <IconMap /> },
@@ -17,12 +19,13 @@ const TABS = [
   { id: 'about', label: 'About', icon: <IconInfo /> },
 ] as const;
 
-type TabId = (typeof TABS)[number]['id'] | 'view';
+type TabId = (typeof TABS)[number]['id'] | 'view' | 'admin';
 
 function parseHash(): { tab: TabId; param?: string } {
   const h = window.location.hash.replace(/^#\/?/, '');
   const [tab, param] = h.split('/');
   if (tab === 'view' && param) return { tab: 'view', param };
+  if (tab === 'admin') return { tab: 'admin' };
   if (TABS.some((t) => t.id === tab)) return { tab: tab as TabId, param };
   return { tab: 'map' };
 }
@@ -49,6 +52,7 @@ export default function App() {
       case 'sky': return <SkyPage />;
       case 'about': return <AboutPage />;
       case 'view': return <SharedTripPage payload={route.param!} />;
+      case 'admin': return <AdminPage />;
     }
   })();
 
@@ -73,6 +77,9 @@ export default function App() {
         </nav>
         <span className="unofficial">Fan project<br />not Parks Canada</span>
       </header>
+
+      <AuthBar />
+      <NoticeBanner />
 
       {page}
 

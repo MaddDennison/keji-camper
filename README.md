@@ -39,11 +39,26 @@ Everything is stored in your browser. No accounts, no keys, no tracking.
 npm install
 npm run dev      # http://localhost:5173
 npm test         # vitest: routing + astronomy
-npm run build    # static site in dist/ (works from any path, e.g. GitHub Pages)
+npm run build    # static site in dist/ (works from any path)
 ```
 
-Deploys to GitHub Pages automatically via `docs/ci/deploy.yml` (move it to `.github/workflows/` to enable) once Pages
+Deploys automatically to [https://kejicamper.ca](https://kejicamper.ca) via
+`docs/ci/deploy.yml` (move it to `.github/workflows/` to enable) once Pages
 is set to “GitHub Actions” in the repo settings.
+
+## Accounts & sync (optional)
+
+The app is **fully functional without any backend** — everything above works
+locally with no account. To enable optional cloud sync and accounts:
+
+```bash
+cp .env.example .env.local   # then fill in your Supabase URL + publishable anon key
+```
+
+- Without `.env.local`, sign-in UI and sync simply don't appear; nothing else changes.
+- Signups are **invite-only** — an admin creates an invite before an email can sign in.
+- Only the publishable (anon) key is ever used; row-level security is the boundary.
+- One-time backend setup steps live in [docs/M3-SETUP.md](docs/M3-SETUP.md).
 
 ## Documentation
 
