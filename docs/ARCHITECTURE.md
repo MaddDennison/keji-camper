@@ -11,7 +11,10 @@
 | Tests | Vitest | covers the two algorithmic cores: chart routing & astronomy |
 | Styling | one global CSS file with custom properties | a design system small enough to read in one sitting |
 
-Runtime dependencies are exactly three: `react`, `react-dom`, `leaflet`.
+Runtime dependencies are exactly four: `react`, `react-dom`, `leaflet`, and
+`@supabase/supabase-js` — the last added in M3 for optional accounts + sync
+(auth sessions and the Postgres-backed sync adapter); when its env vars are
+unset the client is `null` and the app stays purely local.
 
 ## 2. Module map
 
@@ -113,6 +116,13 @@ campers[] · trips[] · memories[] · settings
   subscribe to remote changes. Suggested mapping: one Postgres table per entity,
   `crew_id` scoping, row-level security, photos to object storage (they are
   data-URLs today specifically to keep that swap mechanical).
+
+M3 implements exactly this sync adapter (per `docs/M3-REVIEW.md`): a pure core
+in `src/lib/sync.ts` (baseline diffing, op coalescing, inbound planning — no
+React, supabase, or browser globals, fully unit-tested) with a thin adapter in
+`src/lib/useSync.tsx` that owns localStorage, the network, and the dispatch
+loop — one Postgres table per entity, owner-scoped RLS, and the reducer
+untouched as the single write path.
 
 ## 7. Map & route geometry (v0.2)
 

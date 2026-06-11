@@ -4,12 +4,18 @@ import 'leaflet/dist/leaflet.css';
 import './styles/global.css';
 import App from './App';
 import { StoreProvider } from './lib/store';
+import { AuthProvider } from './lib/auth';
+import { SyncProvider } from './lib/useSync';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <StoreProvider>
-      <App />
-    </StoreProvider>
+    <AuthProvider>
+      <StoreProvider>
+        <SyncProvider>
+          <App />
+        </SyncProvider>
+      </StoreProvider>
+    </AuthProvider>
   </React.StrictMode>,
 );
 
