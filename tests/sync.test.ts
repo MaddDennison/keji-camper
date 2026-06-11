@@ -194,6 +194,56 @@ describe('dirty keys protect offline edits', () => {
   });
 });
 
+describe('owner-scoped pull (admin pollution guard)', () => {
+  // The admin SELECT policy is `owner = auth.uid() OR is_admin()`, so an
+  // admin's unfiltered pull would return every member's rows. The adapter
+  // filters by owner; planInbound refuses foreign rows as a second line of
+  // defense so a regressed query can never merge other journals into the
+  // admin's own.
+  it('drops rows whose owner differs from expectedOwner', () => {
+    const mine = trip('t1', { name: 'My trip' });
+    const theirs = trip('t2', { name: 'Another member’s trip' });
+    const plan = planInbound(
+      appData({ trips: [mine] }),
+      [
+        { table: 'trips', id: 't1', data: mine, deleted_at: null, owner: 'me' },
+        { table: 'trips', id: 't2', data: theirs, deleted_at: null, owner: 'someone-else' },
+      ],
+      new Set(),
+      'me',
+    );
+    // Only my own (already-present) row is considered; the foreign row is
+    // ignored entirely — no save action, no baseline entry for it.
+    expect(plan.actions).toEqual([]);
+    expect(plan.baselineUpdates[keyOf('trips', 't1')]).toBe(serializeEntity(mine));
+    expect(keyOf('trips', 't2') in plan.baselineUpdates).toBe(false);
+  });
+
+  it('a foreign tombstone cannot delete a same-id local entity', () => {
+    // Defense against cross-owner id reuse: a foreign owner's tombstone for an
+    // id that happens to match one of ours must not delete our entity.
+    const localMemory = memory('shared-id', { title: 'Mine' });
+    const plan = planInbound(
+      appData({ memories: [localMemory] }),
+      [{ table: 'memories', id: 'shared-id', data: memory('shared-id'), deleted_at: '2026-06-10T00:00:00Z', owner: 'someone-else' }],
+      new Set(),
+      'me',
+    );
+    expect(plan.actions).toEqual([]);
+    expect(plan.baselineUpdates).toEqual({});
+  });
+
+  it('without expectedOwner the guard is inert (back-compatible)', () => {
+    const t = trip('t1');
+    const plan = planInbound(
+      appData(),
+      [{ table: 'trips', id: 't1', data: t, deleted_at: null, owner: 'whoever' }],
+      new Set(),
+    );
+    expect(plan.actions).toEqual([{ type: 'trip/save', trip: t }]);
+  });
+});
+
 describe('reset safety', () => {
   it('non-empty baseline + empty snapshot signals reset with zero ops', () => {
     const baseline = {

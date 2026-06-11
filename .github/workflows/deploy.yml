@@ -26,6 +26,13 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run build
+        env:
+          # Vite inlines import.meta.env.VITE_* at build time. Without these,
+          # `supabase` is null in the deployed bundle and the accounts/sync/admin
+          # UI never renders. Both are publishable (anon) values, so repo-level
+          # Variables are appropriate — never put a service_role key here.
+          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist

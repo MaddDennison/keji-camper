@@ -2,11 +2,17 @@
 -- Keji Camper — M3 initial schema (accounts · sync · admin)
 -- Implements docs/M3-REVIEW.md decision D2 exactly.
 --
--- Run this file ONCE, pasted into the Supabase SQL editor (see docs/M3-SETUP.md).
+-- Run this file pasted into the Supabase SQL editor (see docs/M3-SETUP.md).
 -- The SQL editor runs as the `postgres` role, which is required: the two
 -- triggers on auth.users below must be owned by postgres to be created there,
 -- and their SECURITY DEFINER functions run as postgres so they may write to
 -- public.profiles / public.invites during signup.
+--
+-- This file is IDEMPOTENT: every statement uses `if not exists` /
+-- `create or replace` / `drop ... if exists`, so a re-run (or a re-run after a
+-- failed partial run) is safe and converges to the same schema. Note that
+-- `create table if not exists` will NOT alter an existing table's columns — if
+-- you change a column definition here, migrate it explicitly.
 --
 -- Security model: the publishable anon key is the only key the client ever
 -- holds; every boundary here is RLS + column grants + SECURITY DEFINER RPCs.
@@ -28,7 +34,7 @@ create extension if not exists pgcrypto with schema extensions;
 -- `role` is NEVER client-writable (column grants below) and the signup trigger
 -- hardcodes it — privileged fields are never copied from raw_user_meta_data.
 -- Note: paddle_kmh / hike_kmh deliberately absent — settings stay local-only.
-create table public.profiles (
+create table if not exists public.profiles (
   id uuid primary key references auth.users (id) on delete cascade,
   display_name text not null default '',
   emoji text not null default '',
@@ -42,7 +48,7 @@ create table public.profiles (
 -- entity travels in `data` jsonb; the composite PK (owner, id) makes
 -- cross-user client-id collisions impossible by construction. `deleted_at`
 -- is a soft-delete tombstone (never SQL DELETE), so deletes can propagate.
-create table public.trips (
+create table if not exists public.trips (
   owner uuid not null default auth.uid() references auth.users (id) on delete cascade,
   id text not null,
   data jsonb not null,
@@ -51,7 +57,7 @@ create table public.trips (
   primary key (owner, id)
 );
 
-create table public.memories (
+create table if not exists public.memories (
   owner uuid not null default auth.uid() references auth.users (id) on delete cascade,
   id text not null,
   data jsonb not null,
@@ -60,7 +66,7 @@ create table public.memories (
   primary key (owner, id)
 );
 
-create table public.campers (
+create table if not exists public.campers (
   owner uuid not null default auth.uid() references auth.users (id) on delete cascade,
   id text not null,
   data jsonb not null,
@@ -71,7 +77,7 @@ create table public.campers (
 
 -- invites: the DB-side signup gate. Creating an invite = inserting a row here
 -- (admin-only via RLS); the BEFORE INSERT trigger on auth.users is the gate.
-create table public.invites (
+create table if not exists public.invites (
   code text primary key default encode(extensions.gen_random_bytes(8), 'hex'),
   email text not null,
   created_by uuid,
@@ -82,7 +88,7 @@ create table public.invites (
 
 -- notices: admin broadcast banner. Session-gated SELECT keeps the logged-out
 -- app untouched (the banner only renders when signed in).
-create table public.notices (
+create table if not exists public.notices (
   id uuid primary key default gen_random_uuid(),
   body text not null,
   active boolean not null default false,
@@ -98,7 +104,7 @@ create table public.notices (
 -- queries any table whose policies call back into it.
 -- ----------------------------------------------------------------------------
 
-create function public.is_admin()
+create or replace function public.is_admin()
 returns boolean
 language sql
 stable
@@ -111,7 +117,7 @@ as $$
   );
 $$;
 
-create function public.is_active()
+create or replace function public.is_active()
 returns boolean
 language sql
 stable
@@ -129,7 +135,7 @@ $$;
 -- which is stamped used_by/used_at atomically (FOR UPDATE row lock), else the
 -- insert is aborted. Rejected signups surface to the client as a generic
 -- 500 "Database error saving new user" — by design (see docs/M3-SETUP.md).
-create function public.check_invite_gate()
+create or replace function public.check_invite_gate()
 returns trigger
 language plpgsql
 security definer
@@ -163,7 +169,7 @@ $$;
 -- Profile bootstrap: AFTER INSERT ON auth.users. Role is hardcoded 'member'
 -- except the sole admin seed email. Display fields start blank; NOTHING is
 -- ever copied from raw_user_meta_data (it is client-controlled).
-create function public.handle_new_user()
+create or replace function public.handle_new_user()
 returns trigger
 language plpgsql
 security definer
@@ -182,7 +188,7 @@ $$;
 
 -- updated_at maintenance for the three entity tables. Server-side arrival
 -- time: conflict resolution is honestly "last-upload-wins per entity" (D1).
-create function public.touch_updated_at()
+create or replace function public.touch_updated_at()
 returns trigger
 language plpgsql
 security definer
@@ -199,7 +205,7 @@ $$;
 -- Table name goes through a CASE whitelist — never dynamic SQL from input.
 -- Campers are intentionally NOT whitelisted: they are owner-only (D4), so
 -- admins can neither see nor moderate them.
-create function public.admin_set_deleted(
+create or replace function public.admin_set_deleted(
   tbl text,
   target_owner uuid,
   target_id text,
@@ -230,7 +236,7 @@ begin
 end;
 $$;
 
-create function public.admin_set_deactivated(
+create or replace function public.admin_set_deactivated(
   target uuid,
   deact boolean
 )
@@ -263,27 +269,32 @@ grant execute on function public.is_admin() to authenticated;
 grant execute on function public.is_active() to authenticated;
 
 -- ----------------------------------------------------------------------------
--- Triggers
+-- Triggers (drop-then-create so a re-run rebinds cleanly)
 -- ----------------------------------------------------------------------------
 
 -- Gate first (BEFORE), then bootstrap the profile (AFTER, so the FK target
 -- row in auth.users exists).
+drop trigger if exists keji_check_invite_gate on auth.users;
 create trigger keji_check_invite_gate
   before insert on auth.users
   for each row execute function public.check_invite_gate();
 
+drop trigger if exists keji_handle_new_user on auth.users;
 create trigger keji_handle_new_user
   after insert on auth.users
   for each row execute function public.handle_new_user();
 
+drop trigger if exists keji_trips_touch_updated_at on public.trips;
 create trigger keji_trips_touch_updated_at
   before update on public.trips
   for each row execute function public.touch_updated_at();
 
+drop trigger if exists keji_memories_touch_updated_at on public.memories;
 create trigger keji_memories_touch_updated_at
   before update on public.memories
   for each row execute function public.touch_updated_at();
 
+drop trigger if exists keji_campers_touch_updated_at on public.campers;
 create trigger keji_campers_touch_updated_at
   before update on public.campers
   for each row execute function public.touch_updated_at();
@@ -304,11 +315,13 @@ alter table public.notices enable row level security;
 -- profiles: any signed-in user can read everyone (member list, display names);
 -- you may update only your own row — and column grants below further restrict
 -- WHICH columns (role / deactivated_at / joined_at are not client-writable).
+drop policy if exists "profiles select authenticated" on public.profiles;
 create policy "profiles select authenticated"
   on public.profiles for select
   to authenticated
   using (true);
 
+drop policy if exists "profiles update own" on public.profiles;
 create policy "profiles update own"
   on public.profiles for update
   to authenticated
@@ -319,16 +332,19 @@ create policy "profiles update own"
 -- additionally SELECT all rows (moderation view) but have no UPDATE policy —
 -- admin writes go through admin_set_deleted() only. Owner SELECT includes
 -- tombstoned rows so tombstones can propagate to the owner's other devices.
+drop policy if exists "trips select own or admin" on public.trips;
 create policy "trips select own or admin"
   on public.trips for select
   to authenticated
   using (owner = auth.uid() or public.is_admin());
 
+drop policy if exists "trips insert own active" on public.trips;
 create policy "trips insert own active"
   on public.trips for insert
   to authenticated
   with check (owner = auth.uid() and public.is_active());
 
+drop policy if exists "trips update own active" on public.trips;
 create policy "trips update own active"
   on public.trips for update
   to authenticated
@@ -336,16 +352,19 @@ create policy "trips update own active"
   with check (owner = auth.uid() and public.is_active());
 
 -- memories: identical to trips.
+drop policy if exists "memories select own or admin" on public.memories;
 create policy "memories select own or admin"
   on public.memories for select
   to authenticated
   using (owner = auth.uid() or public.is_admin());
 
+drop policy if exists "memories insert own active" on public.memories;
 create policy "memories insert own active"
   on public.memories for insert
   to authenticated
   with check (owner = auth.uid() and public.is_active());
 
+drop policy if exists "memories update own active" on public.memories;
 create policy "memories update own active"
   on public.memories for update
   to authenticated
@@ -354,16 +373,19 @@ create policy "memories update own active"
 
 -- campers: same shape but strictly owner-only — no admin SELECT (D4: campers
 -- are excluded from admin views and counts; do not widen this for a count).
+drop policy if exists "campers select own" on public.campers;
 create policy "campers select own"
   on public.campers for select
   to authenticated
   using (owner = auth.uid());
 
+drop policy if exists "campers insert own active" on public.campers;
 create policy "campers insert own active"
   on public.campers for insert
   to authenticated
   with check (owner = auth.uid() and public.is_active());
 
+drop policy if exists "campers update own active" on public.campers;
 create policy "campers update own active"
   on public.campers for update
   to authenticated
@@ -372,6 +394,7 @@ create policy "campers update own active"
 
 -- invites: admin-only for everything. Creating an invite row IS inviting;
 -- the auth.users trigger above is the actual gate.
+drop policy if exists "invites admin all" on public.invites;
 create policy "invites admin all"
   on public.invites for all
   to authenticated
@@ -380,22 +403,26 @@ create policy "invites admin all"
 
 -- notices: any signed-in user may read (home banner is session-gated in the
 -- client, preserving the logged-out invariant); only admins write.
+drop policy if exists "notices select authenticated" on public.notices;
 create policy "notices select authenticated"
   on public.notices for select
   to authenticated
   using (true);
 
+drop policy if exists "notices insert admin" on public.notices;
 create policy "notices insert admin"
   on public.notices for insert
   to authenticated
   with check (public.is_admin());
 
+drop policy if exists "notices update admin" on public.notices;
 create policy "notices update admin"
   on public.notices for update
   to authenticated
   using (public.is_admin())
   with check (public.is_admin());
 
+drop policy if exists "notices delete admin" on public.notices;
 create policy "notices delete admin"
   on public.notices for delete
   to authenticated

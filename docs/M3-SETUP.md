@@ -18,8 +18,11 @@ exactly what lets them fire during signup and write into `public.profiles` /
 `public.invites`. Running the file as any lesser role would fail; in the SQL
 editor it just works.
 
-Run it once only. The file uses plain `create` statements, so a second run
-errors with "already exists" (harmless, but stop and check rather than re-run).
+The file is idempotent (`if not exists` / `create or replace` /
+`drop ... if exists`), so a re-run — including after a failed partial run — is
+safe and converges to the same schema. Note that `create table if not exists`
+will not alter an existing table's columns, so if you ever change a column
+here you must migrate it explicitly rather than relying on a re-run.
 
 ## 2. Enable the Email provider (magic links)
 
