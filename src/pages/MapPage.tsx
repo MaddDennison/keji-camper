@@ -25,6 +25,13 @@ export default function MapPage({ focusId }: { focusId?: string }) {
     return legs;
   }, [tripOverlayId, data.trips]);
 
+  // Place ids that belong to the selected trip; null when no trip is chosen.
+  const tripPlaceIds: Set<string> | null = useMemo(() => {
+    const trip = data.trips.find((t) => t.id === tripOverlayId);
+    if (!trip || trip.stops.length === 0) return null;
+    return new Set(trip.stops.filter(Boolean));
+  }, [tripOverlayId, data.trips]);
+
   return (
     <main className="page full">
       {data.trips.length > 0 && (
@@ -47,6 +54,7 @@ export default function MapPage({ focusId }: { focusId?: string }) {
         selectedId={selected?.id}
         visited={visitedPlaceIds}
         routeOverlay={overlay}
+        tripPlaceIds={tripPlaceIds}
         onSelect={setSelected}
       />
       {selected && <SiteDrawer place={selected} onClose={() => setSelected(null)} />}

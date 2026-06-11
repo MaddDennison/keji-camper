@@ -159,6 +159,12 @@ function TripEditor({ initial, isNew }: { initial: Trip; isNew: boolean }) {
     return legs;
   }, [trip.stops, trip.modes]);
 
+  // Place ids belonging to this trip; null when empty so a new trip doesn't fade everything.
+  const tripPlaceIds: Set<string> | null = useMemo(() => {
+    const ids = trip.stops.filter(Boolean);
+    return ids.length ? new Set(ids) : null;
+  }, [trip.stops]);
+
   /**
    * Single entry point for stop edits (select / add / remove / reorder).
    * - editing the START mirrors the FINISH while the finish is empty or still
@@ -375,6 +381,7 @@ function TripEditor({ initial, isNew }: { initial: Trip; isNew: boolean }) {
             <MapView
               visited={new Set()}
               routeOverlay={overlay.length ? overlay : null}
+              tripPlaceIds={tripPlaceIds}
               onSelect={() => {}}
             />
           </div>
