@@ -123,16 +123,25 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
    */
   const pull = useCallback(async () => {
     if (!supabase || !sessionRef.current) return;
+    const ownerId = sessionRef.current.user.id;
     const rows: RemoteRow[] = [];
     for (const table of TABLES) {
-      const { data: fetched, error } = await supabase.from(table).select('id,data,deleted_at');
+      // Scope the pull to the caller's own rows. The admin SELECT policy is
+      // `owner = auth.uid() OR is_admin()`, so without this filter an admin's
+      // sync would pull every member's rows into their own local journal (and
+      // re-upsert edits to them as copies). Admin cross-user reads are the
+      // AdminPage's job, never the sync loop's.
+      const { data: fetched, error } = await supabase
+        .from(table)
+        .select('id,data,deleted_at,owner')
+        .eq('owner', ownerId);
       if (error) return;
       for (const row of fetched ?? []) {
-        rows.push({ table, id: row.id, data: row.data, deleted_at: row.deleted_at });
+        rows.push({ table, id: row.id, data: row.data, deleted_at: row.deleted_at, owner: row.owner });
       }
     }
     const dirtyKeys = new Set(Object.keys(queueRef.current));
-    const { actions, baselineUpdates } = planInbound(dataRef.current, rows, dirtyKeys);
+    const { actions, baselineUpdates } = planInbound(dataRef.current, rows, dirtyKeys, ownerId);
     const baseline = { ...baselineRef.current };
     for (const [key, value] of Object.entries(baselineUpdates)) {
       if (value === '') delete baseline[key];

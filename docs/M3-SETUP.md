@@ -18,8 +18,11 @@ exactly what lets them fire during signup and write into `public.profiles` /
 `public.invites`. Running the file as any lesser role would fail; in the SQL
 editor it just works.
 
-Run it once only. The file uses plain `create` statements, so a second run
-errors with "already exists" (harmless, but stop and check rather than re-run).
+The file is idempotent (`if not exists` / `create or replace` /
+`drop ... if exists`), so a re-run — including after a failed partial run — is
+safe and converges to the same schema. Note that `create table if not exists`
+will not alter an existing table's columns, so if you ever change a column
+here you must migrate it explicitly rather than relying on a re-run.
 
 ## 2. Enable the Email provider (magic links)
 
@@ -47,6 +50,8 @@ the wrong origin.
 - **Your email is the sole admin seed.** `maddisondennison85@gmail.com`
   bypasses the invite gate and is created as the only `admin`. Everyone else
   is `member`, invited by inserting an `invites` row from the admin page.
+  _(In M3 only the admin can create invites; M4 plans to let any member invite a
+  friend — email-gated, rate-capped, admin-revocable. See `docs/M4-SOCIAL.md`.)_
 - **Deactivation vs. banning.** The admin page "deactivate" action blocks a
   member's writes (RLS checks `profiles.deactivated_at`) but does not log them
   out or block sign-in. A true auth-level ban is a manual dashboard action:

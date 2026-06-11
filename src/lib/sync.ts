@@ -32,6 +32,12 @@ export interface RemoteRow {
   id: string;
   data: unknown;
   deleted_at: string | null;
+  /**
+   * Row owner. The sync pull is owner-scoped, so in normal operation every
+   * row's owner is the caller. It is carried here so `planInbound` can refuse
+   * foreign rows as a second line of defense (see `expectedOwner`).
+   */
+  owner?: string;
 }
 
 /**
@@ -165,15 +171,26 @@ function deleteAction(table: SyncTable, id: string): SyncAction {
  * means "remove this key from the baseline"; any other value means "set the
  * baseline for this key to this serialization". `serializeEntity` never
  * returns an empty string, so the sentinel is unambiguous.
+ *
+ * `expectedOwner` (optional) is a second line of defense for the owner-scoped
+ * pull: the admin SELECT policy returns every member's rows, so if the
+ * adapter's `.eq('owner', …)` filter ever regressed, an admin's pull would try
+ * to merge foreign journals into their own. When `expectedOwner` is given, any
+ * row whose `owner` differs is dropped here — no action, no baseline update —
+ * so the pollution cannot reach the reducer regardless of the query.
  */
 export function planInbound(
   data: AppData,
   remote: RemoteRow[],
   dirtyKeys: Set<string>,
+  expectedOwner?: string,
 ): { actions: SyncAction[]; baselineUpdates: Record<string, string> } {
   const actions: SyncAction[] = [];
   const baselineUpdates: Record<string, string> = {};
   for (const row of remote) {
+    if (expectedOwner !== undefined && row.owner !== undefined && row.owner !== expectedOwner) {
+      continue;
+    }
     const key = keyOf(row.table, row.id);
     if (dirtyKeys.has(key)) continue;
     const local = LOCAL[row.table](data, row.id);

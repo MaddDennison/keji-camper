@@ -73,6 +73,12 @@ you stamp every time you sleep at a new site.
 - Swap the storage adapter (see `docs/ARCHITECTURE.md` §6) for a hosted backend
   (Supabase or PocketBase are both adequate: auth + Postgres/SQLite + row-level sharing)
 - groups ("crews"), shared trips, comments on memories, photo storage in object store
+- **light social** — a shared cabin logbook, tag-a-camper (fork-on-accept, so a
+  trip you did together lands in everyone's journal/passport without re-typing),
+  and member-driven **invite-a-friend** (add a non-user by email; they arrive with
+  the trip in their logbook and can invite onward) is planned in
+  [`docs/M4-SOCIAL.md`](M4-SOCIAL.md); copy-not-co-own, consent-by-schema,
+  invites stay email-gated, attributed, rate-capped and admin-revocable
 - everything in v0.1 is built behind a `Store` interface so this is an adapter swap,
   not a rewrite
 

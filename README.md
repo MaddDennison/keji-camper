@@ -43,8 +43,11 @@ npm run build    # static site in dist/ (works from any path)
 ```
 
 Deploys automatically to [https://kejicamper.ca](https://kejicamper.ca) via
-`docs/ci/deploy.yml` (move it to `.github/workflows/` to enable) once Pages
-is set to “GitHub Actions” in the repo settings.
+`.github/workflows/deploy.yml` once Pages is set to “GitHub Actions” in the
+repo settings. To make accounts/sync work on the deployed site, set the repo
+**Variables** `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` (publishable
+values only) — the build step injects them. Without them the deployed bundle
+runs local-only, exactly like a checkout with no `.env.local`.
 
 ## Accounts & sync (optional)
 
