@@ -1,9 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useAuth } from '../lib/auth';
-import { useSyncStatus } from '../lib/useSync';
+import { BASELINE_KEY, useSyncStatus } from '../lib/useSync';
 import { supabase } from '../lib/supabase';
-
-const BASELINE_KEY = 'keji-camper/sync-baseline/v1';
 
 export default function AuthBar() {
   const { session } = useAuth();

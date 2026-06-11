@@ -22,8 +22,9 @@ import type { RemoteRow, SyncOp, SyncTable } from './sync';
  *   (in-flight ref).
  */
 
-const BASELINE_KEY = 'keji-camper/sync-baseline/v1';
+export const BASELINE_KEY = 'keji-camper/sync-baseline/v1';
 const QUEUE_KEY = 'keji-camper/sync-queue/v1';
+const USER_KEY = 'keji-camper/sync-user/v1';
 const TABLES: SyncTable[] = ['trips', 'memories', 'campers'];
 
 export interface SyncStatus {
@@ -173,6 +174,24 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
       baselineRef.current = readJson<Record<string, string>>(BASELINE_KEY, {});
       queueRef.current = readJson<Record<string, SyncOp>>(QUEUE_KEY, {});
       setPendingCount(Object.keys(queueRef.current).length);
+    }
+    // Sync state belongs to one account: a different user signing in on this
+    // device must not diff against (or flush) the previous user's baseline —
+    // that would emit spurious deletes for the old keys. Start them fresh.
+    const storedUser = localStorage.getItem(USER_KEY);
+    if (storedUser !== session.user.id) {
+      try {
+        localStorage.setItem(USER_KEY, session.user.id);
+      } catch (e) {
+        console.warn('sync state not persisted', e);
+      }
+      if (storedUser !== null) {
+        baselineRef.current = {};
+        queueRef.current = {};
+        writeJson(BASELINE_KEY, {});
+        writeJson(QUEUE_KEY, {});
+        setPendingCount(0);
+      }
     }
     const justSignedIn = prevUserRef.current !== session.user.id;
     prevUserRef.current = session.user.id;

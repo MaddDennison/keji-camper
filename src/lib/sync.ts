@@ -94,7 +94,7 @@ export function diffSnapshots(
   data: AppData,
   baseline: Record<string, string>,
 ): { ops: SyncOp[]; reset: boolean } {
-  const empty = data.trips.length + data.memories.length + data.campers.length === 0;
+  const empty = TABLES.every(({ list }) => list(data).length === 0);
   if (empty && Object.keys(baseline).length > 0) return { ops: [], reset: true };
 
   const ops: SyncOp[] = [];

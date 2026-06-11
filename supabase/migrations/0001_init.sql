@@ -415,7 +415,12 @@ grant select on table public.profiles to authenticated;
 grant update (display_name, emoji, bio) on table public.profiles to authenticated;
 
 -- Entity tables: clients may insert (owner, id, data) and update
--- (data, deleted_at). updated_at is trigger-maintained, never client-set.
+-- (id, data, deleted_at). updated_at is trigger-maintained, never client-set.
+-- `id` must be in the UPDATE grant: PostgREST upserts emit
+-- ON CONFLICT (owner, id) DO UPDATE SET over every payload column, and
+-- Postgres requires UPDATE privilege on each SET column — without `id`
+-- re-upserting an existing row fails with 42501. Harmless to grant: RLS
+-- confines updates to the caller's own rows.
 -- deleted_at being client-updatable means owners can clear their OWN
 -- tombstone — accepted for a family-scale app (documented in M3-REVIEW.md);
 -- admin tombstones on someone else's rows are out of owners' reach via RLS.
@@ -423,17 +428,17 @@ grant update (display_name, emoji, bio) on table public.profiles to authenticate
 revoke all on table public.trips from anon, authenticated;
 grant select on table public.trips to authenticated;
 grant insert (owner, id, data) on table public.trips to authenticated;
-grant update (data, deleted_at) on table public.trips to authenticated;
+grant update (id, data, deleted_at) on table public.trips to authenticated;
 
 revoke all on table public.memories from anon, authenticated;
 grant select on table public.memories to authenticated;
 grant insert (owner, id, data) on table public.memories to authenticated;
-grant update (data, deleted_at) on table public.memories to authenticated;
+grant update (id, data, deleted_at) on table public.memories to authenticated;
 
 revoke all on table public.campers from anon, authenticated;
 grant select on table public.campers to authenticated;
 grant insert (owner, id, data) on table public.campers to authenticated;
-grant update (data, deleted_at) on table public.campers to authenticated;
+grant update (id, data, deleted_at) on table public.campers to authenticated;
 
 -- invites: full DML for authenticated at the grant layer; RLS narrows it to
 -- admins. (used_by/used_at stamping at signup happens via SECURITY DEFINER.)
