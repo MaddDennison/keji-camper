@@ -87,6 +87,13 @@ hand-pasted by the principal. But as written it had four classes of blocker:
 - **Invite creation = inserting an `invites` row** (admin RLS allows it) and
   sharing the app URL; the email match in the trigger is the actual gate.
   No `auth.admin.*` APIs anywhere.
+  > **Forward note (M4):** this "admin-only invite creation" rule is slated to be
+  > *relaxed* in M4 — any active member will be able to invite a not-yet-user
+  > friend (attributed, rate-capped, with an admin kill-switch), while the
+  > email-gate trigger itself stays exactly as built here. The signup gate is not
+  > changing; only *who may populate the `invites` table* widens. See
+  > `docs/M4-SOCIAL.md` §"User-driven invites". Until M4 ships and its review
+  > supersedes this, the admin-only rule above remains the live invariant.
 - **Notices are session-gated** (`SELECT` to authenticated). The home banner
   renders only when signed in — preserving the logged-out invariant. Admin
   writes via `is_admin()` policies.

@@ -50,6 +50,8 @@ the wrong origin.
 - **Your email is the sole admin seed.** `maddisondennison85@gmail.com`
   bypasses the invite gate and is created as the only `admin`. Everyone else
   is `member`, invited by inserting an `invites` row from the admin page.
+  _(In M3 only the admin can create invites; M4 plans to let any member invite a
+  friend — email-gated, rate-capped, admin-revocable. See `docs/M4-SOCIAL.md`.)_
 - **Deactivation vs. banning.** The admin page "deactivate" action blocks a
   member's writes (RLS checks `profiles.deactivated_at`) but does not log them
   out or block sign-in. A true auth-level ban is a manual dashboard action:
