@@ -14,6 +14,8 @@ interface Props {
   selectedId?: string | null;
   visited: Set<string>;
   routeOverlay?: RouteOverlay[] | null;
+  // When set, a trip is selected: markers not in this set of place ids are faded.
+  tripPlaceIds?: Set<string> | null;
   onSelect: (place: Place) => void;
   height?: string;
 }
@@ -37,7 +39,7 @@ function pinIcon(p: Place, visited: boolean, selected: boolean) {
   });
 }
 
-export default function MapView({ selectedId, visited, routeOverlay, onSelect, height }: Props) {
+export default function MapView({ selectedId, visited, routeOverlay, tripPlaceIds, onSelect, height }: Props) {
   const divRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const markersRef = useRef<Map<string, L.Marker>>(new Map());
@@ -133,6 +135,9 @@ export default function MapView({ selectedId, visited, routeOverlay, onSelect, h
       if (!m) continue;
       m.setIcon(pinIcon(p, visited.has(p.id), selectedId === p.id));
       m.setZIndexOffset(selectedId === p.id ? 1000 : 0);
+      // Fade markers that aren't part of the selected trip (keep the selected one solid).
+      const dimmed = !!tripPlaceIds && !tripPlaceIds.has(p.id) && selectedId !== p.id;
+      m.setOpacity(dimmed ? 0.3 : 1);
     }
     if (selectedId) {
       const p = PLACES.find((x) => x.id === selectedId);
@@ -140,7 +145,7 @@ export default function MapView({ selectedId, visited, routeOverlay, onSelect, h
         mapRef.current.panTo([p.lat, p.lng]);
       }
     }
-  }, [selectedId, visited]);
+  }, [selectedId, visited, tripPlaceIds]);
 
   // route overlay — true-to-terrain geometry where the data allows (v0.2 F4)
   useEffect(() => {
