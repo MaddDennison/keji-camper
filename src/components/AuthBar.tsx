@@ -10,30 +10,101 @@ export default function AuthBar() {
 }
 
 function SignInForm() {
-  const { signIn } = useAuth();
+  const { requestCode, verifyCode, linkError, clearLinkError } = useAuth();
+  const [stage, setStage] = useState<'email' | 'code'>('email');
   const [email, setEmail] = useState('');
+  const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
-  async function submit(e: FormEvent) {
-    e.preventDefault();
+  async function sendCode(e?: FormEvent) {
+    e?.preventDefault();
     const addr = email.trim();
     if (!addr || busy) return;
     setBusy(true);
     setMsg(null);
+    clearLinkError();
     try {
-      const res = await signIn(addr);
+      const res = await requestCode(addr);
       if (res?.error) setMsg({ ok: false, text: res.error });
-      else setMsg({ ok: true, text: 'Check your inbox for the sign-in link.' });
+      else {
+        setStage('code');
+        setCode('');
+        setMsg({ ok: true, text: `We emailed a 6-digit code to ${addr} — enter it below.` });
+      }
     } catch {
-      setMsg({ ok: false, text: 'Could not send the link. Try again.' });
+      setMsg({ ok: false, text: 'Could not send the code. Try again.' });
     } finally {
       setBusy(false);
     }
   }
 
+  async function submitCode(e: FormEvent) {
+    e.preventDefault();
+    const c = code.trim();
+    if (!c || busy) return;
+    setBusy(true);
+    setMsg(null);
+    try {
+      const res = await verifyCode(email.trim(), c);
+      if (res?.error) setMsg({ ok: false, text: res.error });
+      // success: the session flips and <SignedIn/> replaces this form.
+    } catch {
+      setMsg({ ok: false, text: 'Could not verify the code. Try again.' });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const notice = msg ?? (linkError ? { ok: false, text: linkError } : null);
+
+  if (stage === 'code') {
+    return (
+      <form className="flex" onSubmit={submitCode}>
+        <div className="field" style={{ marginBottom: 0 }}>
+          <input
+            type="text"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            pattern="[0-9]*"
+            maxLength={6}
+            required
+            placeholder="6-digit code"
+            aria-label="6-digit sign-in code"
+            value={code}
+            onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
+            autoFocus
+          />
+        </div>
+        <button className="btn small" type="submit" disabled={busy}>
+          {busy ? 'Verifying…' : 'Verify & sign in'}
+        </button>
+        <button
+          type="button"
+          className="btn small ghost"
+          disabled={busy}
+          onClick={() => sendCode()}
+        >
+          Resend
+        </button>
+        <button
+          type="button"
+          className="btn small ghost"
+          disabled={busy}
+          onClick={() => {
+            setStage('email');
+            setMsg(null);
+          }}
+        >
+          Use a different email
+        </button>
+        {notice && <span className="muted small">{notice.ok ? notice.text : `⚠ ${notice.text}`}</span>}
+      </form>
+    );
+  }
+
   return (
-    <form className="flex" onSubmit={submit}>
+    <form className="flex" onSubmit={sendCode}>
       <div className="field" style={{ marginBottom: 0 }}>
         <input
           type="email"
@@ -45,10 +116,10 @@ function SignInForm() {
         />
       </div>
       <button className="btn small" type="submit" disabled={busy}>
-        {busy ? 'Sending…' : 'Email me a sign-in link'}
+        {busy ? 'Sending…' : 'Email me a sign-in code'}
       </button>
-      {msg && <span className="muted small">{msg.ok ? msg.text : `⚠ ${msg.text}`}</span>}
-      {!msg && <span className="muted small">Invite-only — sign-in works for invited emails.</span>}
+      {notice && <span className="muted small">{notice.ok ? notice.text : `⚠ ${notice.text}`}</span>}
+      {!notice && <span className="muted small">Invite-only — sign-in works for invited emails.</span>}
     </form>
   );
 }

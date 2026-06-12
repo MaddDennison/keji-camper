@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
-import { supabase, SITE_URL } from './supabase';
+import { supabase } from './supabase';
+import { authErrorFromUrl, signInErrorMessage } from './authMessages';
 
 /**
  * Auth context: magic-link session + own profiles row. Purely additive —
@@ -22,62 +23,52 @@ export interface Profile {
 interface AuthCtx {
   session: Session | null;
   profile: Profile | null;
-  signIn: (email: string) => Promise<{ error?: string }>;
+  /** Step 1: email a 6-digit sign-in code (Supabase OTP). */
+  requestCode: (email: string) => Promise<{ error?: string }>;
+  /** Step 2: verify the code; on success the session arrives via the listener. */
+  verifyCode: (email: string, token: string) => Promise<{ error?: string }>;
   signOut: () => Promise<void>;
+  /** Set when the app loads from a failed magic-link redirect (#error=…). */
+  linkError: string | null;
+  clearLinkError: () => void;
 }
 
 const INERT: AuthCtx = {
   session: null,
   profile: null,
-  signIn: async () => ({ error: 'Sync is not configured' }),
+  requestCode: async () => ({ error: 'Sync is not configured' }),
+  verifyCode: async () => ({ error: 'Sync is not configured' }),
   signOut: async () => {},
+  linkError: null,
+  clearLinkError: () => {},
 };
 
 const Ctx = createContext<AuthCtx>(INERT);
 
-function friendlyError(message: string, code?: string): string {
-  const m = message.toLowerCase();
-  const c = (code ?? '').toLowerCase();
-  if (m.includes('database error') || c.includes('unexpected_failure')) {
-    return 'That email is not on the invite list yet — ask an admin for an invite.';
-  }
-  // Supabase's send cooldown / hourly cap. The message wording varies
-  // ("For security purposes, you can only request this after N seconds.",
-  // "email rate limit exceeded"), so match the code and several phrasings —
-  // and surface the exact wait if it's in the message.
-  if (
-    c.includes('over_email_send_rate_limit') ||
-    c.includes('rate_limit') ||
-    m.includes('rate limit') ||
-    m.includes('rate_limit') ||
-    m.includes('only request this') ||
-    m.includes('security purposes')
-  ) {
-    const after = message.match(/after (\d+) seconds?/i);
-    return after
-      ? `Link already on its way — please wait ${after[1]}s before requesting another.`
-      : 'Link already on its way — please wait a few seconds before requesting another.';
-  }
-  if (m.includes('invalid') && m.includes('email')) {
-    return 'That does not look like a valid email address.';
-  }
-  // Unknown error: surface the server's own message (trimmed) rather than a
-  // vague generic, so the next surprise is at least legible.
-  const detail = message.trim().replace(/\s+/g, ' ').slice(0, 140);
-  return detail
-    ? `Could not send the sign-in link — ${detail}`
-    : 'Could not send the sign-in link — please try again.';
-}
-
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [linkError, setLinkError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!supabase) return;
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
     const { data: sub } = supabase.auth.onAuthStateChange((_event, next) => setSession(next));
     return () => sub.subscription.unsubscribe();
+  }, []);
+
+  // A clicked-but-dead magic link redirects here with the error in the URL.
+  // Surface it once (so the user isn't silently dumped on the form), then scrub
+  // the auth params so it doesn't persist or re-fire on the next render.
+  useEffect(() => {
+    if (!supabase) return;
+    const err = authErrorFromUrl(window.location.hash, window.location.search);
+    if (!err) return;
+    setLinkError(err);
+    const url = new URL(window.location.href);
+    url.hash = '';
+    url.search = '';
+    window.history.replaceState({}, '', url.toString());
   }, []);
 
   useEffect(() => {
@@ -99,17 +90,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, [session]);
 
-  const signIn = async (email: string): Promise<{ error?: string }> => {
+  const requestCode = async (email: string): Promise<{ error?: string }> => {
     if (!supabase) return { error: 'Sync is not configured' };
     try {
-      const { error } = await supabase.auth.signInWithOtp({
-        email,
-        options: { emailRedirectTo: SITE_URL },
-      });
-      if (error) return { error: friendlyError(error.message, (error as { code?: string }).code) };
+      // No emailRedirectTo: the user types the emailed code, they don't follow a
+      // link — sidestepping link-scanner consumption and the in-app-browser trap.
+      const { error } = await supabase.auth.signInWithOtp({ email });
+      if (error) return { error: signInErrorMessage(error.message, (error as { code?: string }).code) };
       return {};
     } catch {
-      return { error: 'Could not send the sign-in link — check your connection and try again.' };
+      return { error: 'Could not send the code — check your connection and try again.' };
+    }
+  };
+
+  const verifyCode = async (email: string, token: string): Promise<{ error?: string }> => {
+    if (!supabase) return { error: 'Sync is not configured' };
+    try {
+      const { error } = await supabase.auth.verifyOtp({ email, token: token.trim(), type: 'email' });
+      if (error) return { error: signInErrorMessage(error.message, (error as { code?: string }).code) };
+      return {}; // success: the onAuthStateChange listener flips the session
+    } catch {
+      return { error: 'Could not verify the code — check your connection and try again.' };
     }
   };
 
@@ -119,7 +120,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setProfile(null);
   };
 
-  return <Ctx.Provider value={{ session, profile, signIn, signOut }}>{children}</Ctx.Provider>;
+  const clearLinkError = () => setLinkError(null);
+
+  return (
+    <Ctx.Provider
+      value={{ session, profile, requestCode, verifyCode, signOut, linkError, clearLinkError }}
+    >
+      {children}
+    </Ctx.Provider>
+  );
 }
 
 export function useAuth(): AuthCtx {
