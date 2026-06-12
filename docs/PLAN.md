@@ -76,9 +76,10 @@ you stamp every time you sleep at a new site.
 - **light social** — a shared cabin logbook, tag-a-camper (fork-on-accept, so a
   trip you did together lands in everyone's journal/passport without re-typing),
   and member-driven **invite-a-friend** (add a non-user by email; they arrive with
-  the trip in their logbook and can invite onward) is planned in
-  [`docs/M4-SOCIAL.md`](M4-SOCIAL.md); copy-not-co-own, consent-by-schema,
-  invites stay email-gated, attributed, rate-capped and admin-revocable
+  the trip in their logbook and can invite onward) is built per
+  [`docs/M4-REVIEW.md`](M4-REVIEW.md) (plan: [`docs/M4-SOCIAL.md`](M4-SOCIAL.md));
+  copy-not-co-own, consent-by-schema, invites stay email-gated, attributed,
+  rate-capped and admin-revocable
 - everything in v0.1 is built behind a `Store` interface so this is an adapter swap,
   not a rewrite
 
