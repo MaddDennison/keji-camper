@@ -3,7 +3,7 @@ import { useAuth } from '../lib/auth';
 import { supabase } from '../lib/supabase';
 import { placeById } from '../data/sites';
 import { fmtDate, paddles } from '../lib/format';
-import { useSocial } from '../lib/useLogbook';
+import { AttendeeLine, useSocial } from '../lib/useLogbook';
 import type { SocialProfile } from '../lib/useLogbook';
 import type { InboxItem, LogbookCard } from '../lib/social';
 import type { Memory, Trip } from '../types';
@@ -163,6 +163,7 @@ function InboxCard({
       </div>
       {trip && <TripSummary trip={trip} />}
       {memory && <MemorySummary memory={memory} />}
+      <AttendeeLine ids={(trip ?? memory)?.attendees} profiles={[...profiles.values()]} me={item.fromOwner} />
       {trip && item.memories.length > 0 && (
         <p className="tiny muted">Includes {item.memories.length} memor{item.memories.length === 1 ? 'y' : 'ies'} (photos & stories).</p>
       )}
@@ -197,6 +198,7 @@ function BroadcastCard({
       </div>
       {trip && <TripSummary trip={trip} />}
       {memory && <MemorySummary memory={memory} />}
+      <AttendeeLine ids={(trip ?? memory)?.attendees} profiles={[...profiles.values()]} me={card.row.owner} />
       {!card.own && (
         <div className="flex" style={{ marginTop: 8 }}>
           {card.saved

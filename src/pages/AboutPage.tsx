@@ -73,10 +73,12 @@ export default function AboutPage() {
       <div className="card">
         <h3>Your data, your friends</h3>
         <p className="small">
-          Everything you write lives in this browser (localStorage) — nothing is uploaded
-          anywhere. Use <b>Journal → Crew &amp; data → Export</b> to back up or to send your
-          journal to a friend; importing merges safely. A true multi-user version is the
-          roadmap’s next stop (see <span className="kbd">docs/PLAN.md</span>).
+          Everything you write lives in this browser first (localStorage) and the whole app
+          works without an account. Sign in — it’s invite-only — and your journal syncs to
+          your account, you can share trips and memories with other members (they save a
+          read-only copy into their own journal), post to the cabin logbook, and invite
+          friends by email. Prefer sneakernet? <b>Journal → Crew &amp; data → Export</b> still
+          works: send the file to a friend and importing merges safely.
         </p>
       </div>
 

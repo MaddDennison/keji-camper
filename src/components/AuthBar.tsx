@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useAuth } from '../lib/auth';
 import { BASELINE_KEY, useSyncStatus } from '../lib/useSync';
 import { useInboxCount } from '../lib/useLogbook';
@@ -149,6 +149,7 @@ function SignedIn() {
   const { pendingCount, syncNow } = useSyncStatus();
   const inboxCount = useInboxCount();
   const [busy, setBusy] = useState(false);
+  const [editingProfile, setEditingProfile] = useState(false);
   const [hasBaseline, setHasBaseline] = useState(
     () => localStorage.getItem(BASELINE_KEY) != null,
   );
@@ -169,7 +170,15 @@ function SignedIn() {
 
   return (
     <div className="flex">
-      <span className="chip">{emoji} {name}</span>
+      <button
+        className="chip"
+        style={{ cursor: 'pointer', background: 'none', color: 'inherit' }}
+        title={profile?.display_name ? 'Edit your camper profile' : 'Pick your trail name — right now other campers see you as “Unnamed camper”'}
+        onClick={() => setEditingProfile(true)}
+      >
+        {emoji} {profile?.display_name ? name : `${name} · name yourself ✏️`}
+      </button>
+      {editingProfile && <ProfileDialog onClose={() => setEditingProfile(false)} />}
       <span className="chip muted">{pendingCount === 0 ? 'synced' : `${pendingCount} pending`}</span>
       <button className="btn small ghost" onClick={runSync} disabled={busy}>
         {busy ? 'Syncing…' : 'Sync now'}
@@ -187,6 +196,70 @@ function SignedIn() {
       )}
       <button className="btn small ghost" onClick={() => signOut()}>Sign out</button>
     </div>
+  );
+}
+
+const PROFILE_EMOJIS = ['🏕', '🦫', '🛶', '🌲', '🔥', '🦉', '🐢', '🌌', '🪓', '🐟', '🍁'];
+
+/**
+ * Edit own profile (display name + emoji). This is what other members see on
+ * logbook cards, shares and the admin page — without it everyone stays
+ * "Unnamed camper" (the profiles row is created blank at signup and the
+ * display_name/emoji columns were member-writable since M3, but no UI ever
+ * exposed them).
+ */
+function ProfileDialog({ onClose }: { onClose: () => void }) {
+  const { profile, updateProfile } = useAuth();
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const [name, setName] = useState(profile?.display_name ?? '');
+  const [emoji, setEmoji] = useState(profile?.emoji || '🏕');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => { dialogRef.current?.showModal(); }, []);
+
+  const emojis = PROFILE_EMOJIS.includes(emoji) ? PROFILE_EMOJIS : [emoji, ...PROFILE_EMOJIS];
+
+  const save = async () => {
+    if (busy) return;
+    setBusy(true);
+    setError('');
+    const res = await updateProfile({ display_name: name.trim(), emoji });
+    setBusy(false);
+    if (res.error) setError(res.error);
+    else onClose();
+  };
+
+  return (
+    <dialog ref={dialogRef} className="modal" onClose={onClose}>
+      <h3>Your camper profile</h3>
+      <p className="tiny muted">
+        This is how you appear to other members — on logbook cards, shares and tags.
+      </p>
+      <div className="flex">
+        <div className="field">
+          <label>Emoji</label>
+          <select value={emoji} onChange={(e) => setEmoji(e.target.value)}>
+            {emojis.map((e) => <option key={e}>{e}</option>)}
+          </select>
+        </div>
+        <div className="field" style={{ flex: 1, minWidth: 160 }}>
+          <label>Trail name</label>
+          <input
+            value={name} placeholder="Maddison" autoFocus
+            onChange={(e) => setName(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void save(); } }}
+          />
+        </div>
+      </div>
+      {error && <p className="small muted">⚠️ {error}</p>}
+      <div className="flex" style={{ marginTop: 6 }}>
+        <button className="btn" onClick={() => void save()} disabled={busy || !name.trim()}>
+          {busy ? 'Saving…' : 'Save'}
+        </button>
+        <button className="btn ghost" onClick={onClose}>Cancel</button>
+      </div>
+    </dialog>
   );
 }
 

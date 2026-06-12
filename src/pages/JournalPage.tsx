@@ -9,11 +9,14 @@ import { renderMemoryCard, shareBlob } from '../lib/sharecard';
 import { fmtDate, paddles, todayIso, uid } from '../lib/format';
 import { cabinStampCounts } from '../lib/social';
 import { compressPhoto, useStore } from '../lib/store';
-import { useProfiles, useSocial } from '../lib/useLogbook';
+import { AttendeeLine, useProfiles, useSocial } from '../lib/useLogbook';
+import type { SocialProfile } from '../lib/useLogbook';
 import type { Camper, Memory } from '../types';
 
 export default function JournalPage() {
   const { data, dispatch, visitedPlaceIds, exportJson, importJson } = useStore();
+  const { session } = useAuth();
+  const profiles = useProfiles();
   const [editing, setEditing] = useState<Memory | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const [tab, setTab] = useState<'feed' | 'passport' | 'crew'>('feed');
@@ -61,7 +64,7 @@ export default function JournalPage() {
             </div>
           )}
           {memories.map((m) => (
-            <MemoryCard key={m.id} memory={m} onEdit={() => setEditing(m)} />
+            <MemoryCard key={m.id} memory={m} profiles={profiles} me={session?.user.id} onEdit={() => setEditing(m)} />
           ))}
         </>
       )}
@@ -70,7 +73,7 @@ export default function JournalPage() {
 
       {tab === 'crew' && (
         <>
-          <CrewEditor campers={data.campers} onSave={(c) => dispatch({ type: 'camper/save', camper: c })} onDelete={(id) => dispatch({ type: 'camper/delete', id })} />
+          <CrewEditor campers={data.campers} profiles={profiles} onSave={(c) => dispatch({ type: 'camper/save', camper: c })} onDelete={(id) => dispatch({ type: 'camper/delete', id })} />
 
           <div className="section-head"><h2>Pace</h2><span className="sub">used for travel-time estimates</span></div>
           <div className="card flex">
@@ -112,8 +115,9 @@ export default function JournalPage() {
               }}
             />
             <p className="tiny muted" style={{ flexBasis: '100%' }}>
-              Everything lives in this browser only. Export to back up, or send the file to a
-              friend — importing merges by id, so swapping journals is safe.
+              Everything lives in this browser (and syncs to your account when you’re signed
+              in). Export to back up, or send the file to a friend — importing merges by id,
+              so swapping journals is safe.
             </p>
           </div>
         </>
@@ -139,7 +143,12 @@ function blankMemory(placeId = ''): Memory {
   };
 }
 
-function MemoryCard({ memory, onEdit }: { memory: Memory; onEdit: () => void }) {
+function MemoryCard({ memory, profiles, me, onEdit }: {
+  memory: Memory;
+  profiles: SocialProfile[];
+  me?: string;
+  onEdit: () => void;
+}) {
   const { data } = useStore();
   const place = placeById.get(memory.placeId);
   const author = data.campers.find((c) => c.id === memory.authorId);
@@ -154,6 +163,7 @@ function MemoryCard({ memory, onEdit }: { memory: Memory; onEdit: () => void }) 
         {place ? <a href={`#/sites/${place.id}`}>{place.name}</a> : 'somewhere out there'}
         {author && <> · by {author.emoji} {author.name}</>}
       </div>
+      <AttendeeLine ids={memory.attendees} profiles={profiles} me={me} />
       <p className="small" style={{ whiteSpace: 'pre-wrap' }}>{memory.text}</p>
       {memory.tags.length > 0 && (
         <div className="flex">{memory.tags.map((t) => <span key={t} className="chip muted">#{t}</span>)}</div>
@@ -348,18 +358,17 @@ function Passport({ visited, memories }: { visited: Set<string>; memories: Memor
 }
 
 function CrewEditor({
-  campers, onSave, onDelete,
+  campers, profiles, onSave, onDelete,
 }: {
   campers: Camper[];
+  /** Session-gated member list — empty logged out, so the "claim a tag as a
+   * member account" dropdown (Camper.profileId, M4) only shows signed in. */
+  profiles: SocialProfile[];
   onSave: (c: Camper) => void;
   onDelete: (id: string) => void;
 }) {
   const [name, setName] = useState('');
   const [emoji, setEmoji] = useState('🦫');
-  // Session-gated: lets a local crew tag be "claimed" as a real member
-  // account (Camper.profileId, M4). Logged out this list is empty and the
-  // crew editor renders exactly as before.
-  const profiles = useProfiles();
   const profileName = (id: string) => {
     const p = profiles.find((x) => x.id === id);
     return p ? `${p.emoji || '🦫'} ${p.display_name || 'Unnamed camper'}` : 'a member';
@@ -411,8 +420,10 @@ function CrewEditor({
           >Add</button>
         </div>
         <p className="tiny muted" style={{ marginTop: 8 }}>
-          Local profiles for now — the data model is ready for the multi-user version
-          (see docs/ARCHITECTURE.md in the repo).
+          Crew tags are your own labels — anyone can ride in the canoe, account or not.
+          {profiles.length > 0
+            ? ' Use the dropdown on a tag to link it to a member account. To put a trip or memory in a friend’s journal, use \u{1F465} Share with campers on the entry itself.'
+            : ' Sign in to link tags to member accounts and share trips with other campers.'}
         </p>
       </div>
     </>
