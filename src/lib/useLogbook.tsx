@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from './store';
 import { useAuth } from './auth';
 import { supabase } from './supabase';
@@ -145,18 +145,27 @@ export function useSocial(): SocialState {
     for (const action of planAcceptBundle(item.trip, item.memories, dataRef.current, ctx)) {
       dispatch(action);
     }
-    await supabase.from('shares')
+    const { error } = await supabase.from('shares')
       .update({ accepted_at: new Date().toISOString() })
       .in('id', item.shareIds);
     await refresh();
+    if (error) {
+      setState((s) => ({
+        ...s,
+        error: `Saved to your journal, but the offer couldn’t be marked accepted (${error.message}) — it will stay in the inbox; accepting again is safe.`,
+      }));
+    }
   }, [me, dispatch, refresh]);
 
   const dismiss = useCallback(async (item: InboxItem) => {
     if (!supabase || !me) return;
-    await supabase.from('shares')
+    const { error } = await supabase.from('shares')
       .update({ dismissed_at: new Date().toISOString() })
       .in('id', item.shareIds);
     await refresh();
+    if (error) {
+      setState((s) => ({ ...s, error: `Couldn’t dismiss the offer: ${error.message}` }));
+    }
   }, [me, refresh]);
 
   const saveCopy = useCallback((card: LogbookCard) => {
@@ -168,12 +177,18 @@ export function useSocial(): SocialState {
     dispatch(plan.action);
   }, [me, dispatch]);
 
+  const logbook = useMemo(
+    () => (me ? planLogbook(state.broadcast, data, me) : []),
+    [state.broadcast, data, me],
+  );
+  const inbox = useMemo(() => planInbox(state.shares, state.refs), [state.shares, state.refs]);
+
   if (!supabase || !me) return INERT;
   return {
     loading: state.loading,
     error: state.error,
-    logbook: planLogbook(state.broadcast, data, me),
-    inbox: planInbox(state.shares, state.refs),
+    logbook,
+    inbox,
     profiles: state.profiles,
     broadcastRows: state.broadcast,
     refresh,
@@ -315,11 +330,16 @@ export async function setBroadcast(kind: ShareKind, refId: string, me: string, v
   if (error) throw new Error(error.message);
 }
 
-/** The copyable invite note (P3). No hardcoded code length — it's configurable. */
-export function inviteNote(email: string, siteUrl: string, fromName: string): string {
+/**
+ * The copyable invite note (P3) — the single source for both the AdminPage
+ * and ShareControl flows. No hardcoded code length — it's configurable
+ * (M3 gotcha). `fromName` adds the "something is waiting" line for invites
+ * minted alongside a share.
+ */
+export function inviteNote(email: string, siteUrl: string, fromName?: string): string {
   return (
     `You're invited to Keji Camper 🛶 — open ${siteUrl}, hit "Sign in", and use this exact email address: ${email}. ` +
-    `We'll email you a sign-in code — type it in (there's an "I have a code" button if you already got it). ` +
-    `${fromName} shared a trip with you; it'll be waiting in your logbook.`
+    `We'll email you a sign-in code — type it in (there's an "I have a code" button if you already got it). No password needed.` +
+    (fromName ? ` ${fromName} shared a trip with you; it'll be waiting in your logbook.` : '')
   );
 }

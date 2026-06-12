@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../lib/auth';
 import { SITE_URL, supabase } from '../lib/supabase';
+import { inviteNote } from '../lib/useLogbook';
 
 type Db = NonNullable<typeof supabase>;
 
@@ -198,10 +199,6 @@ function MembersSection({
 
 /* ---------- invites ---------- */
 
-function inviteNote(email: string): string {
-  return `You’re invited to Keji Camper 🛶 — open ${SITE_URL}, hit “Sign in”, and use this exact email address: ${email}. We’ll email you a sign-in code — type it in (there’s an “I have a code” button if you already got it). No password needed.`;
-}
-
 function InvitesSection({
   invites, openInvites, me, busy, run, db,
 }: {
@@ -225,11 +222,11 @@ function InvitesSection({
 
   const copyNote = async (inv: InviteRow) => {
     try {
-      await navigator.clipboard.writeText(inviteNote(inv.email));
+      await navigator.clipboard.writeText(inviteNote(inv.email, SITE_URL));
       setCopied(inv.code);
       window.setTimeout(() => setCopied(''), 2000);
     } catch {
-      window.prompt('Copy this invite note:', inviteNote(inv.email));
+      window.prompt('Copy this invite note:', inviteNote(inv.email, SITE_URL));
     }
   };
 
