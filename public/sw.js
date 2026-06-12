@@ -3,7 +3,7 @@
  * the parking lot with no signal. Map tiles and weather APIs are deliberately
  * not cached (licensing + freshness); the app handles their absence.
  */
-const CACHE = 'keji-camper-v2';
+const CACHE = 'keji-camper-v3';
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE).then((c) => c.addAll(['./'])).then(() => self.skipWaiting()));
