@@ -223,6 +223,25 @@ export function useProfiles(): SocialProfile[] {
   return profiles;
 }
 
+/**
+ * "with 🛶 Maddison · 🦫 Sam" — the co-attribution a forked trip/memory
+ * carries in `attendees` (profile ids, D6). Renders nothing when there is
+ * nobody to show (logged out, no attendees, or only myself).
+ */
+export function AttendeeLine({ ids, profiles, me }: {
+  ids?: string[];
+  profiles: SocialProfile[];
+  me?: string;
+}) {
+  const names = (ids ?? [])
+    .filter((id) => id !== me)
+    .map((id) => profiles.find((p) => p.id === id))
+    .filter((p): p is SocialProfile => p !== undefined)
+    .map((p) => `${p.emoji || '🦫'} ${p.display_name || 'Unnamed camper'}`);
+  if (names.length === 0) return null;
+  return <div className="tiny muted">with {names.join(' · ')}</div>;
+}
+
 /** Lightweight pending-offer count for the AuthBar pill. Polls on focus. */
 export function useInboxCount(): number {
   const { session } = useAuth();

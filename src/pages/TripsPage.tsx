@@ -14,6 +14,8 @@ import { encodeTripLink } from '../lib/share';
 import { renderTripCard, shareBlob } from '../lib/sharecard';
 import { applySmartModes, migrateTripModes } from '../lib/tripsmart';
 import { newTrip, useStore } from '../lib/store';
+import { useAuth } from '../lib/auth';
+import { AttendeeLine, useProfiles } from '../lib/useLogbook';
 import type { Trip, TravelMode } from '../types';
 
 const STATUS_LABEL = { dream: '💭 dreaming', planned: '🗺 planned', completed: '✅ completed' } as const;
@@ -139,6 +141,8 @@ function TripCard({ trip, paddleKmh, hikeKmh }: { trip: Trip; paddleKmh: number;
 
 function TripEditor({ initial, isNew }: { initial: Trip; isNew: boolean }) {
   const { data, dispatch } = useStore();
+  const { session } = useAuth();
+  const profiles = useProfiles();
   const [trip, setTrip] = useState<Trip>(initial);
   const [cloudByDate, setCloudByDate] = useState<Record<string, number | null>>({});
   const [linkCopied, setLinkCopied] = useState(false);
@@ -301,6 +305,7 @@ function TripEditor({ initial, isNew }: { initial: Trip; isNew: boolean }) {
                   );
                 })}
               </div>
+              <AttendeeLine ids={trip.attendees} profiles={profiles} me={session?.user.id} />
             </div>
 
             <div className="field">

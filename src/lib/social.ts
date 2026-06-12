@@ -173,8 +173,9 @@ export function planAcceptBundle(
 
 /** True when a copy of this shared row already exists in the local journal. */
 export function alreadyForked(source: SharedRow, data: AppData): boolean {
-  const list = source.kind === 'trip' ? data.trips : data.memories;
-  return findByOrigin(list, source.owner, source.id) !== undefined;
+  return source.kind === 'trip'
+    ? findByOrigin(data.trips, source.owner, source.id) !== undefined
+    : findByOrigin(data.memories, source.owner, source.id) !== undefined;
 }
 
 /* ---------------------------------------------------------------- inbox -- */

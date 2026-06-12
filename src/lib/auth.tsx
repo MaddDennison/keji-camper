@@ -28,6 +28,10 @@ interface AuthCtx {
   /** Step 2: verify the code; on success the session arrives via the listener. */
   verifyCode: (email: string, token: string) => Promise<{ error?: string }>;
   signOut: () => Promise<void>;
+  /** Update own profile (display_name/emoji/bio — the columns RLS allows). */
+  updateProfile: (
+    patch: Partial<Pick<Profile, 'display_name' | 'emoji' | 'bio'>>,
+  ) => Promise<{ error?: string }>;
   /** Set when the app loads from a failed magic-link redirect (#error=…). */
   linkError: string | null;
   clearLinkError: () => void;
@@ -39,6 +43,7 @@ const INERT: AuthCtx = {
   requestCode: async () => ({ error: 'Sync is not configured' }),
   verifyCode: async () => ({ error: 'Sync is not configured' }),
   signOut: async () => {},
+  updateProfile: async () => ({ error: 'Sync is not configured' }),
   linkError: null,
   clearLinkError: () => {},
 };
@@ -120,11 +125,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setProfile(null);
   };
 
+  const updateProfile = async (
+    patch: Partial<Pick<Profile, 'display_name' | 'emoji' | 'bio'>>,
+  ): Promise<{ error?: string }> => {
+    if (!supabase || !session) return { error: 'Not signed in' };
+    const { data, error } = await supabase
+      .from('profiles')
+      .update(patch)
+      .eq('id', session.user.id)
+      .select('id, display_name, emoji, role, bio, deactivated_at, joined_at')
+      .maybeSingle();
+    if (error) return { error: error.message };
+    if (data) setProfile(data as Profile);
+    return {};
+  };
+
   const clearLinkError = () => setLinkError(null);
 
   return (
     <Ctx.Provider
-      value={{ session, profile, requestCode, verifyCode, signOut, linkError, clearLinkError }}
+      value={{ session, profile, requestCode, verifyCode, signOut, updateProfile, linkError, clearLinkError }}
     >
       {children}
     </Ctx.Provider>

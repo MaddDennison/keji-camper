@@ -3,6 +3,9 @@ name: Test & deploy to GitHub Pages
 on:
   push:
     branches: [main]
+  # Build (tsc + vite) on PRs too — vitest alone doesn't type-check, so a
+  # compile error can pass tests and then break the deploy after merge.
+  pull_request:
   workflow_dispatch:
 
 permissions:
@@ -11,7 +14,7 @@ permissions:
   id-token: write
 
 concurrency:
-  group: pages
+  group: pages-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -38,6 +41,7 @@ jobs:
           path: dist
 
   deploy:
+    if: github.event_name != 'pull_request'
     needs: build
     runs-on: ubuntu-latest
     environment:
