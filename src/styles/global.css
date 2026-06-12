@@ -39,8 +39,10 @@ html, body { margin: 0; padding: 0; }
 html { -webkit-text-size-adjust: 100%; }
 /* Safety net: keep stray wide content from forcing a horizontal scroll, which
    would let the page slide out from under the sticky topbar. `clip` (unlike
-   `hidden`) doesn't create a scroll container, so sticky positioning survives. */
-body { overflow-x: clip; }
+   `hidden`) doesn't create a scroll container, so sticky positioning survives.
+   It must live on the root <html>: clip propagation from <body> to the viewport
+   is unreliable on mobile Chromium, but from the root element it is honoured. */
+html, body { overflow-x: clip; }
 
 body {
   font-family: var(--font-body);
@@ -349,7 +351,7 @@ table.data td.head { background: var(--parchment-dim); font-weight: 700; text-al
 .paddles { color: var(--rust); letter-spacing: 2px; }
 
 .leg-row {
-  display: flex; gap: 10px; align-items: center;
+  display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
   border-bottom: 1px dashed var(--ink-soft); padding: 7px 0; font-size: 0.92rem;
 }
 .leg-row .mode-ic { flex: none; width: 26px; text-align: center; }
