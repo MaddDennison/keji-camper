@@ -73,6 +73,7 @@ function AdminInner({ db, me }: { db: Db; me: string }) {
   const [memories, setMemories] = useState<ContentRow[]>([]);
   const [invites, setInvites] = useState<InviteRow[]>([]);
   const [notice, setNotice] = useState<NoticeRow | null>(null);
+  const [openInvites, setOpenInvites] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -81,20 +82,22 @@ function AdminInner({ db, me }: { db: Db; me: string }) {
     setLoading(true);
     setError('');
     try {
-      const [p, t, m, i, n] = await Promise.all([
+      const [p, t, m, i, n, c] = await Promise.all([
         db.from('profiles').select('id, display_name, emoji, role, deactivated_at, joined_at').order('joined_at', { ascending: true }),
         db.from('trips').select('id, owner, data, updated_at, deleted_at'),
         db.from('memories').select('id, owner, data, updated_at, deleted_at'),
         db.from('invites').select('code, email, created_by, used_by, used_at, created_at').order('created_at', { ascending: false }),
         db.from('notices').select('id, body, active, created_at').eq('active', true).order('created_at', { ascending: false }).limit(1),
+        db.from('app_config').select('open_invites').limit(1),
       ]);
-      const failed = [p, t, m, i, n].find((r) => r.error);
+      const failed = [p, t, m, i, n, c].find((r) => r.error);
       if (failed?.error) throw new Error(failed.error.message);
       setProfiles((p.data ?? []) as ProfileRow[]);
       setTrips((t.data ?? []) as ContentRow[]);
       setMemories((m.data ?? []) as ContentRow[]);
       setInvites((i.data ?? []) as InviteRow[]);
       setNotice(((n.data ?? [])[0] ?? null) as NoticeRow | null);
+      setOpenInvites(((c.data ?? [])[0] as { open_invites: boolean } | undefined)?.open_invites ?? null);
     } catch (err) {
       setError(`Couldn’t load admin data: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
@@ -128,7 +131,8 @@ function AdminInner({ db, me }: { db: Db; me: string }) {
       {error && <p className="small muted">⚠️ {error}</p>}
 
       <MembersSection profiles={profiles} trips={trips} memories={memories} me={me} busy={busy} run={run} db={db} />
-      <InvitesSection invites={invites} me={me} busy={busy} run={run} db={db} />
+      <InvitesSection invites={invites} openInvites={openInvites} me={me} busy={busy} run={run} db={db} />
+      <ReferralSection profiles={profiles} invites={invites} />
       <ContentSection profiles={profiles} trips={trips} memories={memories} busy={busy} run={run} db={db} />
       <NoticeSection notice={notice} busy={busy} run={run} db={db} />
     </main>
@@ -195,13 +199,14 @@ function MembersSection({
 /* ---------- invites ---------- */
 
 function inviteNote(email: string): string {
-  return `You’re invited to Keji Camper 🛶 — open ${SITE_URL}, hit “Sign in”, and use this exact email address: ${email}. A magic link will land in your inbox; no password needed.`;
+  return `You’re invited to Keji Camper 🛶 — open ${SITE_URL}, hit “Sign in”, and use this exact email address: ${email}. We’ll email you a sign-in code — type it in (there’s an “I have a code” button if you already got it). No password needed.`;
 }
 
 function InvitesSection({
-  invites, me, busy, run, db,
+  invites, openInvites, me, busy, run, db,
 }: {
   invites: InviteRow[];
+  openInvites: boolean | null;
   me: string;
   busy: boolean;
   run: (fn: () => PromiseLike<{ error: { message: string } | null }>) => Promise<void>;
@@ -209,6 +214,7 @@ function InvitesSection({
 }) {
   const [email, setEmail] = useState('');
   const [copied, setCopied] = useState('');
+  const unusedCount = invites.filter((i) => !i.used_at).length;
 
   const create = async () => {
     const addr = email.trim().toLowerCase();
@@ -231,6 +237,32 @@ function InvitesSection({
     <>
       <div className="section-head"><h2>Invites</h2><span className="sub">signups are invite-only</span></div>
       <div className="card">
+        {/* The kill-switch (M4-REVIEW D7). Flipping it off stops members
+            creating NEW invites; unused ones stay redeemable — the full
+            clamp is the switch plus "Revoke all unused" beside it. */}
+        <div className="flex">
+          <span className="small">
+            <b>Member invites:</b> {openInvites === null ? '— run 0002_social.sql —' : openInvites ? 'ON' : 'OFF (admin-only)'}
+          </span>
+          {openInvites !== null && (
+            <button
+              className={`btn small ${openInvites ? 'danger' : 'secondary'}`}
+              disabled={busy}
+              onClick={() => run(() => db.from('app_config').update({ open_invites: !openInvites }).eq('id', true))}
+            >{openInvites ? 'Switch off' : 'Switch on'}</button>
+          )}
+          {unusedCount > 0 && (
+            <button
+              className="btn ghost small right" disabled={busy}
+              onClick={() => {
+                if (confirm(`Revoke all ${unusedCount} unused invite${unusedCount === 1 ? '' : 's'}? Already-joined members are unaffected.`)) {
+                  void run(() => db.from('invites').delete().is('used_at', null));
+                }
+              }}
+            >Revoke all unused ({unusedCount})</button>
+          )}
+        </div>
+        <hr className="hr-stitch" />
         <div className="flex">
           <div className="field" style={{ flex: 1, minWidth: 200, marginBottom: 0 }}>
             <label>Friend’s email</label>
@@ -255,12 +287,68 @@ function InvitesSection({
               ? <span className="chip muted">used{inv.used_at ? ` ${inv.used_at.slice(0, 10)}` : ''}</span>
               : <span className="chip muted">unused</span>}
             {!inv.used_by && (
-              <button className="btn ghost small right" disabled={busy} onClick={() => void copyNote(inv)}>
-                {copied === inv.code ? '✓ Copied' : '📋 Copy invite note'}
-              </button>
+              <span className="flex right" style={{ gap: 6 }}>
+                <button className="btn ghost small" disabled={busy} onClick={() => void copyNote(inv)}>
+                  {copied === inv.code ? '✓ Copied' : '📋 Copy invite note'}
+                </button>
+                <button
+                  className="btn danger small" disabled={busy}
+                  onClick={() => run(() => db.from('invites').delete().eq('code', inv.code))}
+                >Revoke</button>
+              </span>
             )}
           </div>
         ))}
+      </div>
+    </>
+  );
+}
+
+/* ---------- referral tree ---------- */
+
+function ReferralSection({ profiles, invites }: { profiles: ProfileRow[]; invites: InviteRow[] }) {
+  // Who brought whom: a used invite is an edge created_by → used_by; an
+  // unused one is a pending leaf under its creator. Members with no inbound
+  // edge (the admin seed, or pre-M4 joins) are roots.
+  const tree = useMemo(() => {
+    const invitedBy = new Map<string, string>();
+    for (const inv of invites) {
+      if (inv.used_by && inv.created_by) invitedBy.set(inv.used_by, inv.created_by);
+    }
+    const childrenOf = (id: string) => profiles.filter((p) => invitedBy.get(p.id) === id);
+    const pendingOf = (id: string) => invites.filter((i) => i.created_by === id && !i.used_at);
+    const roots = profiles.filter((p) => !invitedBy.has(p.id));
+    return { childrenOf, pendingOf, roots };
+  }, [profiles, invites]);
+
+  const renderNode = (p: ProfileRow, depth: number, seen: Set<string>): JSX.Element | null => {
+    if (seen.has(p.id)) return null;
+    const next = new Set(seen).add(p.id);
+    return (
+      <div key={p.id} style={{ paddingLeft: depth * 18 }}>
+        <div className="flex" style={{ padding: '3px 0' }}>
+          <span className="small">
+            {depth > 0 && <span className="muted">↳ </span>}
+            {p.emoji || '🦫'} <b>{p.display_name || 'Unnamed camper'}</b>
+          </span>
+          {p.deactivated_at && <span className="chip muted">deactivated</span>}
+        </div>
+        {tree.childrenOf(p.id).map((c) => renderNode(c, depth + 1, next))}
+        {tree.pendingOf(p.id).map((i) => (
+          <div key={i.code} className="small muted" style={{ paddingLeft: (depth + 1) * 18, paddingTop: 2, paddingBottom: 2 }}>
+            ↳ ✉️ {i.email} <span className="chip muted">invited, not joined</span>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  return (
+    <>
+      <div className="section-head"><h2>Referral tree</h2><span className="sub">who brought whom</span></div>
+      <div className="card">
+        {tree.roots.length === 0 && <p className="small muted">No members yet.</p>}
+        {tree.roots.map((p) => renderNode(p, 0, new Set()))}
       </div>
     </>
   );

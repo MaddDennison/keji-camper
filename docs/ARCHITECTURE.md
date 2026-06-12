@@ -124,6 +124,15 @@ React, supabase, or browser globals, fully unit-tested) with a thin adapter in
 loop — one Postgres table per entity, owner-scoped RLS, and the reducer
 untouched as the single write path.
 
+M4 adds the light-social layer on top (per `docs/M4-REVIEW.md`), same split:
+a pure core in `src/lib/social.ts` (fork/provenance/de-dupe, inbox/logbook
+planning, share batches) with a thin adapter in `src/lib/useLogbook.tsx`.
+Shared and addressed rows are read by a **separate ephemeral query** — never
+through the sync pull, never into the baseline — and sharing is
+fork-on-accept: the only write that lands content in a journal is the
+recipient's own `trip/save`/`memory/save` under their own uid
+(consent-by-schema; every entity table keeps `with check (owner = auth.uid())`).
+
 ## 7. Map & route geometry (v0.2)
 
 `MapView` is created once per mount; props drive three reactive layers:

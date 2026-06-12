@@ -25,6 +25,12 @@ export interface TripLeg {
 
 export type TripStatus = 'dream' | 'planned' | 'completed';
 
+/** Fork provenance (M4): which remote entity this copy came from. */
+export interface Origin {
+  owner: string; // profile id of the original owner
+  id: string; // their entity id
+}
+
 export interface Trip {
   id: string;
   name: string;
@@ -36,12 +42,18 @@ export interface Trip {
   partyIds: string[];
   notes: string;
   status: TripStatus;
+  /** Co-attribution (M4): profile ids of everyone who was there; travels with forks. */
+  attendees?: string[];
+  /** Set only on forked copies; powers de-dupe so re-accepts never duplicate. */
+  origin?: Origin;
 }
 
 export interface Camper {
   id: string;
   name: string;
   emoji: string;
+  /** Links this local crew tag to a real account (M4); unset = plain local tag. */
+  profileId?: string;
 }
 
 export interface Memory {
@@ -55,6 +67,10 @@ export interface Memory {
   rating: number; // 1..5 paddles
   tags: string[];
   photos: string[]; // small data-URLs
+  /** Co-attribution (M4): profile ids of everyone who was there; travels with forks. */
+  attendees?: string[];
+  /** Set only on forked copies; powers de-dupe so re-accepts never duplicate. */
+  origin?: Origin;
 }
 
 export interface Settings {

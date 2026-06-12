@@ -8,6 +8,7 @@ import SkyPage from './pages/SkyPage';
 import AboutPage from './pages/AboutPage';
 import SharedTripPage from './pages/SharedTripPage';
 import AdminPage from './pages/AdminPage';
+import LogbookPage from './pages/LogbookPage';
 import AuthBar, { NoticeBanner } from './components/AuthBar';
 
 const TABS = [
@@ -19,13 +20,14 @@ const TABS = [
   { id: 'about', label: 'About', icon: <IconInfo /> },
 ] as const;
 
-type TabId = (typeof TABS)[number]['id'] | 'view' | 'admin';
+type TabId = (typeof TABS)[number]['id'] | 'view' | 'admin' | 'logbook';
 
 function parseHash(): { tab: TabId; param?: string } {
   const h = window.location.hash.replace(/^#\/?/, '');
   const [tab, param] = h.split('/');
   if (tab === 'view' && param) return { tab: 'view', param };
   if (tab === 'admin') return { tab: 'admin' };
+  if (tab === 'logbook') return { tab: 'logbook' };
   if (TABS.some((t) => t.id === tab)) return { tab: tab as TabId, param };
   return { tab: 'map' };
 }
@@ -53,6 +55,7 @@ export default function App() {
       case 'about': return <AboutPage />;
       case 'view': return <SharedTripPage payload={route.param!} />;
       case 'admin': return <AdminPage />;
+      case 'logbook': return <LogbookPage />;
     }
   })();
 

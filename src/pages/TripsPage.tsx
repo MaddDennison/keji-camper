@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { navigate } from '../App';
 import MapView, { type RouteOverlay } from '../components/MapView';
 import PrintSheet from '../components/PrintSheet';
+import ShareControl from '../components/ShareControl';
 import SkyPanel from '../components/SkyPanel';
 import StopCards from '../components/StopCards';
 import WeatherPanel from '../components/WeatherPanel';
@@ -372,6 +373,14 @@ function TripEditor({ initial, isNew }: { initial: Trip; isNew: boolean }) {
             >
               {rendering ? '…' : '🖼 Share card'}
             </button>
+            {!isNew && (
+              <ShareControl
+                kind="trip"
+                entityId={trip.id}
+                entityName={trip.name}
+                memoryIds={data.memories.filter((m) => m.tripId === trip.id).map((m) => m.id)}
+              />
+            )}
             {!isNew && <button className="btn danger small" onClick={remove}>Delete</button>}
           </div>
         </div>

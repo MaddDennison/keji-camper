@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useAuth } from '../lib/auth';
 import { BASELINE_KEY, useSyncStatus } from '../lib/useSync';
+import { useInboxCount } from '../lib/useLogbook';
 import { supabase } from '../lib/supabase';
 
 export default function AuthBar() {
@@ -30,7 +31,7 @@ function SignInForm() {
       else {
         setStage('code');
         setCode('');
-        setMsg({ ok: true, text: `We emailed a 6-digit code to ${addr} — enter it below.` });
+        setMsg({ ok: true, text: `We emailed a sign-in code to ${addr} — enter it below.` });
       }
     } catch {
       setMsg({ ok: false, text: 'Could not send the code. Try again.' });
@@ -62,15 +63,15 @@ function SignInForm() {
     return (
       <form className="flex" onSubmit={submitCode}>
         <div className="field" style={{ marginBottom: 0 }}>
+          {/* No maxLength: the OTP length is dashboard-configurable (M3 gotcha). */}
           <input
             type="text"
             inputMode="numeric"
             autoComplete="one-time-code"
             pattern="[0-9]*"
-            maxLength={6}
             required
-            placeholder="6-digit code"
-            aria-label="6-digit sign-in code"
+            placeholder="code from the email"
+            aria-label="sign-in code from the email"
             value={code}
             onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
             autoFocus
@@ -146,6 +147,7 @@ function SignInForm() {
 function SignedIn() {
   const { session, profile, signOut } = useAuth();
   const { pendingCount, syncNow } = useSyncStatus();
+  const inboxCount = useInboxCount();
   const [busy, setBusy] = useState(false);
   const [hasBaseline, setHasBaseline] = useState(
     () => localStorage.getItem(BASELINE_KEY) != null,
@@ -177,6 +179,9 @@ function SignedIn() {
           {busy ? 'Uploading…' : 'Upload my local journal'}
         </button>
       )}
+      <a className="btn small ghost" href="#/logbook">
+        📖 Logbook{inboxCount > 0 ? ` · ${inboxCount} new` : ''}
+      </a>
       {profile?.role === 'admin' && (
         <a className="btn small ghost" href="#/admin">Admin</a>
       )}

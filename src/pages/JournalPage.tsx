@@ -1,11 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { navigate } from '../App';
+import ShareControl from '../components/ShareControl';
 import Stamp from '../components/Stamp';
 import { directoryOrder, placeById, PLACES } from '../data/sites';
+import { useAuth } from '../lib/auth';
 import { computeBadges } from '../lib/badges';
 import { renderMemoryCard, shareBlob } from '../lib/sharecard';
 import { fmtDate, paddles, todayIso, uid } from '../lib/format';
+import { cabinStampCounts } from '../lib/social';
 import { compressPhoto, useStore } from '../lib/store';
+import { useProfiles, useSocial } from '../lib/useLogbook';
 import type { Camper, Memory } from '../types';
 
 export default function JournalPage() {
@@ -169,6 +173,7 @@ function MemoryCard({ memory, onEdit }: { memory: Memory; onEdit: () => void }) 
             await shareBlob(blob, `keji-memory-${memory.date}.png`, memory.title || 'Keji memory');
           }}
         >📤 Share card</button>
+        <ShareControl kind="memory" entityId={memory.id} entityName={memory.title} />
       </div>
     </article>
   );
@@ -285,6 +290,11 @@ function MemoryForm({
 
 function Passport({ visited, memories }: { visited: Set<string>; memories: Memory[] }) {
   const { data } = useStore();
+  const { session } = useAuth();
+  // Read-only cabin overlay (M4): counts come from the ephemeral logbook
+  // query, never from local state — logged out, the passport is unchanged.
+  const { broadcastRows } = useSocial();
+  const cabin = session ? cabinStampCounts(broadcastRows, session.user.id) : new Map<string, number>();
   const campPlaces = PLACES.filter((p) => p.kind !== 'launch');
   const stamped = campPlaces.filter((p) => visited.has(p.id));
   const badges = computeBadges(data.memories, data.trips);
@@ -302,13 +312,22 @@ function Passport({ visited, memories }: { visited: Set<string>; memories: Memor
       <p className="small muted">
         A stamp appears when a site has a memory, or is part of a completed trip.
         Collect them all and you’ve slept everywhere a person can sleep in the Keji backcountry.
+        {session && cabin.size > 0 && ' Tallies under a stamp show how many other campers have logged that site in the cabin logbook.'}
       </p>
       <div className="stamp-grid">
-        {campPlaces.map((p) => (
-          <div key={p.id} className="stamp-cell" title={p.name}>
-            <Stamp place={p} ghost={!visited.has(p.id)} year={yearFor(p.id)} />
-          </div>
-        ))}
+        {campPlaces.map((p) => {
+          const others = cabin.get(p.id) ?? 0;
+          return (
+            <div key={p.id} className="stamp-cell" title={p.name}>
+              <Stamp place={p} ghost={!visited.has(p.id)} year={yearFor(p.id)} />
+              {others > 0 && (
+                <div className="tiny muted" style={{ textAlign: 'center' }}>
+                  +{others} camper{others === 1 ? '' : 's'}
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
 
       <div className="section-head" style={{ marginTop: 22 }}>
@@ -337,6 +356,14 @@ function CrewEditor({
 }) {
   const [name, setName] = useState('');
   const [emoji, setEmoji] = useState('🦫');
+  // Session-gated: lets a local crew tag be "claimed" as a real member
+  // account (Camper.profileId, M4). Logged out this list is empty and the
+  // crew editor renders exactly as before.
+  const profiles = useProfiles();
+  const profileName = (id: string) => {
+    const p = profiles.find((x) => x.id === id);
+    return p ? `${p.emoji || '🦫'} ${p.display_name || 'Unnamed camper'}` : 'a member';
+  };
   const EMOJIS = ['🦫', '🛶', '🌲', '🔥', '🦉', '🐢', '🌌', '🪓', '🐟', '🍁'];
   return (
     <>
@@ -346,6 +373,19 @@ function CrewEditor({
           {campers.map((c) => (
             <span key={c.id} className="chip muted" style={{ fontSize: '0.9rem', textTransform: 'none' }}>
               {c.emoji} {c.name}
+              {profiles.length > 0 && (
+                <select
+                  value={c.profileId ?? ''}
+                  title={c.profileId ? `Linked to ${profileName(c.profileId)}` : 'Link to a member account'}
+                  style={{ marginLeft: 4, maxWidth: 110 }}
+                  onChange={(e) => onSave({ ...c, profileId: e.target.value || undefined })}
+                >
+                  <option value="">local only</option>
+                  {profiles.map((p) => (
+                    <option key={p.id} value={p.id}>{p.emoji || '🦫'} {p.display_name || 'Unnamed'}</option>
+                  ))}
+                </select>
+              )}
               <button
                 style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit' }}
                 onClick={() => onDelete(c.id)} aria-label={`Remove ${c.name}`}
