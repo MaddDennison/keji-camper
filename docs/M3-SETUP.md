@@ -24,20 +24,52 @@ safe and converges to the same schema. Note that `create table if not exists`
 will not alter an existing table's columns, so if you ever change a column
 here you must migrate it explicitly rather than relying on a re-run.
 
-## 2. Enable the Email provider (magic links)
+## 2. Enable the Email provider (6-digit codes)
 
 1. Go to **Authentication → Sign In / Providers**.
-2. Enable the **Email** provider.
-3. Magic links are the flow the app uses (`signInWithOtp`) — no passwords.
-   Leave email confirmations/magic link settings at their defaults.
+2. Enable the **Email** provider — no passwords.
+3. The app signs in with a **6-digit email code** (`signInWithOtp` →
+   `verifyOtp`), not a clickable link. Clickable magic links proved fragile on
+   mobile: only the newest link works, mail-app link scanners consume the
+   single-use token before you tap, and the link often opens in a different
+   in-app browser than the one that requested it. A typed code sidesteps all of
+   that.
+
+### 2a. Put the code in the email template (REQUIRED for code sign-in)
+
+By default the Magic Link email contains only a link, so no code is shown. Add
+the token:
+
+1. Go to **Authentication → Emails → Templates → Magic Link**.
+2. Make sure the body includes the **`{{ .Token }}`** variable, e.g.:
+
+   ```html
+   <h2>Your Keji Camper sign-in code</h2>
+   <p>Enter this code in the app:</p>
+   <p style="font-size:24px;letter-spacing:3px"><b>{{ .Token }}</b></p>
+   <p>It expires in an hour. If you didn’t request it, ignore this email.</p>
+   ```
+
+   You can keep `{{ .ConfirmationURL }}` as a fallback link if you like, but the
+   code is what the app asks for. Without `{{ .Token }}` the email has no code
+   and sign-in cannot complete.
 
 ## 3. Set the Site URL
 
 1. Go to **Authentication → URL Configuration**.
 2. Set **Site URL** to `https://kejicamper.ca`.
 
-Magic-link emails redirect here; if it is wrong, sign-in links will bounce to
-the wrong origin.
+This is still the canonical origin for the project. (The code flow doesn't rely
+on a redirect, but if any clickable link remains in the template it lands here,
+and the app surfaces a clear message if a stale link is ever followed.)
+
+## Email deliverability (do before real use)
+
+The built-in Supabase email sender is **test-grade**: a low hourly cap (you will
+hit "please wait N seconds" cooldowns) and it often lands in spam. Before
+inviting real people, wire **custom SMTP** (Resend, Postmark, SendGrid, or
+Amazon SES) under **Authentication → Emails → SMTP Settings**. This raises the
+limits and fixes deliverability.
 
 ## Things to know (not action items)
 
