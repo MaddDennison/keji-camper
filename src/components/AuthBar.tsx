@@ -118,6 +118,25 @@ function SignInForm() {
       <button className="btn small" type="submit" disabled={busy}>
         {busy ? 'Sending…' : 'Email me a sign-in code'}
       </button>
+      <button
+        type="button"
+        className="btn small ghost"
+        disabled={busy}
+        onClick={() => {
+          if (!email.trim()) {
+            setMsg({ ok: false, text: 'Enter your email first, then your code.' });
+            return;
+          }
+          // Jump straight to the code box without sending a new code — for when
+          // a code already landed (a prior send, or an invite email).
+          setMsg(null);
+          clearLinkError();
+          setCode('');
+          setStage('code');
+        }}
+      >
+        I have a code
+      </button>
       {notice && <span className="muted small">{notice.ok ? notice.text : `⚠ ${notice.text}`}</span>}
       {!notice && <span className="muted small">Invite-only — sign-in works for invited emails.</span>}
     </form>
