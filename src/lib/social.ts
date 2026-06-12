@@ -1,4 +1,4 @@
-import type { AppData, Memory, Trip } from '../types';
+import type { AppData, Memory, Origin, Trip } from '../types';
 import type { SyncAction } from './sync';
 
 /**
@@ -173,7 +173,7 @@ export function planAcceptBundle(
 
 /** True when a copy of this shared row already exists in the local journal. */
 export function alreadyForked(source: SharedRow, data: AppData): boolean {
-  const list = source.kind === 'trip' ? data.trips : data.memories;
+  const list: { origin?: Origin }[] = source.kind === 'trip' ? data.trips : data.memories;
   return findByOrigin(list, source.owner, source.id) !== undefined;
 }
 
