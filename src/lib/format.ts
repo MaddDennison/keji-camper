@@ -2,6 +2,11 @@ export function fmtKm(km: number): string {
   return `${km.toFixed(km < 10 ? 1 : 0)} km`;
 }
 
+/** Carry distances are short — sub-km reads better in metres. */
+export function fmtCarry(metres: number): string {
+  return metres >= 1000 ? `${(metres / 1000).toFixed(1)} km` : `${metres} m`;
+}
+
 export function fmtDate(iso: string): string {
   if (!iso) return '—';
   const d = new Date(iso + 'T12:00:00');

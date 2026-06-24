@@ -159,15 +159,18 @@ export default function MapView({ selectedId, visited, routeOverlay, tripPlaceId
       for (const seg of legGeometry(leg.mode, leg.nodes)) {
         if (seg.points.length < 2) continue;
         all.push(...seg.points);
+        const isCarry = !!seg.portage;
         L.polyline(seg.points, {
-          color,
-          weight: seg.schematic ? 3 : 4.5,
-          opacity: seg.schematic ? 0.55 : 0.9,
-          dashArray: seg.schematic ? '2 10' : leg.mode === 'hike' ? '8 6' : undefined,
+          color: isCarry ? '#b3261e' : color, // portage red matches the standalone tracks
+          weight: isCarry ? 3.4 : seg.schematic ? 3 : 4.5,
+          opacity: isCarry ? 0.95 : seg.schematic ? 0.55 : 0.9,
+          dashArray: isCarry ? undefined : seg.schematic ? '2 10' : leg.mode === 'hike' ? '8 6' : undefined,
           lineCap: 'round',
         })
           .bindTooltip(
-            `Leg ${i + 1} (${leg.mode}${seg.schematic ? ' · schematic line' : ''})`,
+            isCarry
+              ? `Leg ${i + 1} · carry over Portage ${seg.portage!.slice(2)}`
+              : `Leg ${i + 1} (${leg.mode}${seg.schematic ? ' · schematic line' : ''})`,
             { sticky: true },
           )
           .addTo(layer);

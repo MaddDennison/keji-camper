@@ -200,11 +200,23 @@ export const CHARTS: Chart[] = [
   },
 ];
 
-/** Estimated connector edges (NOT from the published charts). */
+/**
+ * Estimated connector edges (NOT from the published charts). These wire
+ * on-water places that no paddle chart lists into the routing graph, so they
+ * stop returning “no paddle route”. Distances are open-water estimates; routes
+ * that use them are flagged ≈. (Carries are handled separately in portages.ts.)
+ */
 export const EXTRA_EDGES: { a: string; b: string; km: number; mode: TravelMode }[] = [
   // Wil-Bo-Wil cabin is absent from the charts; rough links near Peskowesk’s east end.
   { a: 'W2', b: 'peskwharf', km: 0.7, mode: 'paddle' },
   { a: 'W2', b: '29', km: 0.8, mode: 'paddle' },
+  // Eel Weir sits on the water at the foot of Keji Lake but appears only in the
+  // hiking chart, so by canoe it was a dead end. Link it across the south end of
+  // Keji Lake to Lantern Rock (open paddle, ~3.4 km); the Mersey-side route down
+  // past the dam is the Portage O carry in portages.ts.
+  { a: 'eelweir', b: 'lanternrock', km: 3.4, mode: 'paddle' },
+  // (Sites 45 & 46 overlook Frozen Ocean Lake but are reached up the Liberty
+  // Lake / Channel Lake trails, so they stay hike-access — no paddle connector.)
   // The hiking chart footnote: West River Trail junction (on the Liberty Lake
   // Trail) to Site 22 is 6.4 km. We expose it as 22 <-> 42 / 22 <-> 41 hike
   // links via the published row for 22 already, so nothing extra needed here.

@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { directoryOrder, placeById } from '../data/sites';
-import { fmtKm } from '../lib/format';
-import { fmtHours, legHours, route } from '../lib/routing';
+import { fmtCarry, fmtKm } from '../lib/format';
+import { fmtHours, legHours, portagesOnLeg, route } from '../lib/routing';
 import type { Place, TravelMode } from '../types';
 
 /**
@@ -176,8 +176,9 @@ function LegRow({
 }) {
   if (!from || !to) return <div className="leg-connector" />;
   const r = route(mode, from, to);
+  const carries = r ? portagesOnLeg(mode, r.path) : [];
   return (
-    <div className="leg-row" style={{ borderBottom: 'none', paddingLeft: 30 }}>
+    <div className="leg-row" style={{ borderBottom: 'none', paddingLeft: 30, flexWrap: 'wrap' }}>
       <button
         className={`btn small ${mode === 'paddle' ? 'secondary' : 'ghost'}`}
         title="Paddle this leg" onClick={() => onPick('paddle')}
@@ -195,6 +196,16 @@ function LegRow({
       ) : (
         <span className="small right" style={{ color: '#9c4220' }}>
           no {mode} route in the charts
+        </span>
+      )}
+      {carries.length > 0 && (
+        <span
+          className="tiny"
+          style={{ flexBasis: '100%', paddingLeft: 2, color: '#b3261e' }}
+          title="Portages on this leg — distance already included in the leg total"
+        >
+          🥾 {carries.length === 1 ? 'carry' : `${carries.length} carries`}:{' '}
+          {carries.map((c) => `${c.id.slice(2)} (${fmtCarry(c.carryM)})`).join(', ')}
         </span>
       )}
     </div>

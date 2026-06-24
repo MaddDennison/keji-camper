@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { CHARTS } from '../src/data/distances';
-import { route, legHours, fmtHours } from '../src/lib/routing';
+import { route, legHours, fmtHours, portagesOnLeg } from '../src/lib/routing';
 
 describe('distance charts', () => {
   it('every chart triangle has the right shape', () => {
@@ -72,6 +72,43 @@ describe('route()', () => {
       expect(r, `${a}→${b}`).not.toBeNull();
       expect(r!.km).toBeGreaterThan(0);
     }
+  });
+});
+
+describe('portages as connectors', () => {
+  it('Eel Weir → site 25 now routes by canoe over a portage (was "no route")', () => {
+    const r = route('paddle', 'eelweir', '25');
+    expect(r).not.toBeNull();
+    expect(r!.exact).toBe(false); // stitched, so flagged ≈
+    const carries = portagesOnLeg('paddle', r!.path);
+    expect(carries.map((c) => c.id)).toContain('P-E');
+  });
+
+  it('a chart-direct leg still names the carry it crosses (24 → 25 = Portage E)', () => {
+    const r = route('paddle', '24', '25')!;
+    expect(r.exact).toBe(true); // chart value wins; carry is already baked in
+    expect(r.km).toBe(2.4);
+    const carries = portagesOnLeg('paddle', r.path);
+    expect(carries).toHaveLength(1);
+    expect(carries[0].id).toBe('P-E');
+    expect(carries[0].carryM).toBe(2060);
+  });
+
+  it('the carry distance uses the true GPX length, never the misleading chart cell', () => {
+    // The old code excluded portages because a chart "Portage E" cell is ~0.4 km;
+    // the real carry is ~2 km, which is what we surface.
+    const carries = portagesOnLeg('paddle', route('paddle', '24', '25')!.path);
+    expect(carries[0].carryM).toBeGreaterThan(1500);
+  });
+
+  it('never invents a canoe route to a hike-only site (site 28)', () => {
+    expect(route('paddle', '29', '28')).toBeNull();
+    expect(route('paddle', '24', '28')).toBeNull();
+  });
+
+  it('hiking legs report no carries', () => {
+    const r = route('hike', 'bigdam', '44')!;
+    expect(portagesOnLeg('hike', r.path)).toHaveLength(0);
   });
 });
 

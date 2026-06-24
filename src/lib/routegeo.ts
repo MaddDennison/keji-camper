@@ -1,4 +1,5 @@
 import waterways from '../data/waterways.json';
+import { portageBetween } from '../data/portages';
 import { GEO, haversine, nodeCoord } from './mapdata';
 import type { TravelMode } from '../types';
 
@@ -15,6 +16,16 @@ import type { TravelMode } from '../types';
 export interface LegSegment {
   points: [number, number][];
   schematic: boolean; // true = straight-line fallback
+  portage?: string; // set when this segment is a carry (drawn as a portage, not a paddle)
+}
+
+/** GPX track for a portage id ('P-E'), oriented to start near `from`. */
+function portageTrack(id: string, from: [number, number]): [number, number][] | null {
+  const t = GEO.portages.find((p) => `P-${p.name}` === id);
+  if (!t || t.points.length < 2) return null;
+  const pts = t.points as [number, number][];
+  const fwd = haversine(pts[0], from) <= haversine(pts[pts.length - 1], from);
+  return fwd ? pts : [...pts].reverse();
 }
 
 const WATER_PAIRS: Record<string, [number, number][]> = (waterways as any).pairs ?? {};
@@ -139,6 +150,18 @@ export function legGeometry(mode: TravelMode, pathNodes: string[]): LegSegment[]
   for (let i = 0; i < coords.length - 1; i++) {
     const A = coords[i];
     const B = coords[i + 1];
+
+    // A carry between two water nodes: paddle in, walk the real portage track,
+    // paddle out — so the map shows where the canoe leaves the water.
+    const link = mode === 'paddle' ? portageBetween(A.id, B.id) : undefined;
+    const track = link ? portageTrack(link.id, A.c) : null;
+    if (track) {
+      segs.push({ points: [A.c, track[0]], schematic: true });
+      segs.push({ points: track, schematic: false, portage: link!.id });
+      segs.push({ points: [track[track.length - 1], B.c], schematic: true });
+      continue;
+    }
+
     let pts: [number, number][] | null = null;
     if (mode === 'paddle') pts = waterCorridor(A.id, B.id);
     else pts = walkPath(A.c, B.c);

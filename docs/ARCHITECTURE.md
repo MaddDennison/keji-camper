@@ -62,14 +62,23 @@ Three properties shaped the design:
    All chart cells become edges of a weighted graph per mode (paddle/hike); Dijkstra
    finds the cheapest stitch through shared nodes (Site 11, Site 24, launches…).
    Results are flagged `exact: false` and rendered with “≈”.
-3. **Portage rows are display-only.** The charts measure “Portage X” cells from
-   whichever *end* of the portage is closer, so a portage node in the graph would
-   let routes transit a 2 km carry for free. Portage cells are excluded from the
-   graph (but shown in the chart viewer); routing stitches only through real points.
+3. **Portages are explicit carry edges, not chart cells.** The charts measure
+   “Portage X” cells from whichever *end* of the portage is closer, so feeding a
+   portage *cell* into the graph would let routes transit a 2 km carry for free —
+   those cells stay excluded (and visible only in the chart viewer). Instead,
+   `src/data/portages.ts` (`PORTAGE_LINKS`) joins the two water nodes a carry
+   connects, weighted by the carry's **true GPX length** (`portageMeters`) plus a
+   short water approach. This is what lets canoe routes cross between lake systems
+   that share no chart (e.g. Eel Weir → North Cranberry over Portage E) without the
+   teleport. A guard skips any link touching a hike-only site, so a carry never
+   invents a paddle route to a trail site. `portagesOnLeg()` then reports the
+   carries on any leg — including chart-direct legs, where the carry is baked into
+   the figure but the paddler still needs to know it's there.
 
 A short `EXCLUDED_EDGES` list drops cells that break the triangle inequality within
 their own chart (documented in `docs/DATA.md`). `EXTRA_EDGES` adds estimated
-connectors for the one bookable place missing from all charts (Wil-Bo-Wil cabin).
+connectors for on-water places missing from all charts (Wil-Bo-Wil cabin; Eel Weir,
+which sits on Keji Lake but is charted only for hiking).
 
 Travel time = distance ÷ user-set pace (defaults: paddle 4 km/h, hike 3.5 km/h);
 portage time is already inside the paddling chart figures.
