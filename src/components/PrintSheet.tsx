@@ -1,7 +1,8 @@
 import { moonInfo, sunTimes } from '../lib/astro';
 import { placeById } from '../data/sites';
 import { addDaysIso, fmtCarry, fmtDate, fmtKm, fmtTime } from '../lib/format';
-import { fmtHours, legHours, portagesOnLeg, route } from '../lib/routing';
+import { legCarries } from '../lib/routegeo';
+import { fmtHours, legHours, route } from '../lib/routing';
 import type { Camper, Trip } from '../types';
 
 /**
@@ -36,7 +37,7 @@ export default function PrintSheet({
             const to = trip.stops[i + 1];
             const mode = trip.modes[i] ?? 'paddle';
             const r = from && to ? route(mode, from, to) : null;
-            const carries = r ? portagesOnLeg(mode, r.path) : [];
+            const carries = r ? legCarries(mode, r.path) : [];
             return (
               <tr key={i}>
                 <td>{i + 1}</td>

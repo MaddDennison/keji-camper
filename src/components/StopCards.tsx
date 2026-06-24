@@ -1,7 +1,8 @@
 import { useRef, useState } from 'react';
 import { directoryOrder, placeById } from '../data/sites';
 import { fmtCarry, fmtKm } from '../lib/format';
-import { fmtHours, legHours, portagesOnLeg, route } from '../lib/routing';
+import { legCarries } from '../lib/routegeo';
+import { fmtHours, legHours, route } from '../lib/routing';
 import type { Place, TravelMode } from '../types';
 
 /**
@@ -176,7 +177,7 @@ function LegRow({
 }) {
   if (!from || !to) return <div className="leg-connector" />;
   const r = route(mode, from, to);
-  const carries = r ? portagesOnLeg(mode, r.path) : [];
+  const carries = r ? legCarries(mode, r.path) : [];
   return (
     <div className="leg-row" style={{ borderBottom: 'none', paddingLeft: 30, flexWrap: 'wrap' }}>
       <button

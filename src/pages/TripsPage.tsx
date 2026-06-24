@@ -9,7 +9,8 @@ import WeatherPanel from '../components/WeatherPanel';
 import { TRIP_TEMPLATES } from '../data/templates';
 import { placeById } from '../data/sites';
 import { addDaysIso, fmtDate, fmtKm, uid } from '../lib/format';
-import { fmtHours, legHours, portagesOnLeg, route } from '../lib/routing';
+import { legCarries } from '../lib/routegeo';
+import { fmtHours, legHours, route } from '../lib/routing';
 import { encodeTripLink } from '../lib/share';
 import { renderTripCard, shareBlob } from '../lib/sharecard';
 import { applySmartModes, migrateTripModes } from '../lib/tripsmart';
@@ -110,7 +111,7 @@ function tripTotals(trip: Trip, paddleKmh: number, hikeKmh: number) {
     if (r) {
       km += r.km;
       hours += legHours(r.km, mode, mode === 'paddle' ? paddleKmh : hikeKmh);
-      carries += portagesOnLeg(mode, r.path).length;
+      carries += legCarries(mode, r.path).length;
       if (!r.exact) allExact = false;
     } else {
       allExact = false;
