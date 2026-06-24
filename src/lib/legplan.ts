@@ -55,15 +55,17 @@ export function planLeg(
     };
   }
 
-  // default routing: chart distance + corridor geometry
+  // default routing: chart distance + the real water corridor. On a branching
+  // leg we pin the carries (and ask the corridor to highlight them) so the list
+  // and the red segments match even where the corridor only grazes a carry.
   const carries = set
-    ? set.options[0].portages.map((id) => ({ id, carryM: portageMeters[id] ?? 0 })) // pin (corridor can miss a grazed carry)
+    ? set.options[0].portages.map((id) => ({ id, carryM: portageMeters[id] ?? 0 }))
     : legCarries(mode, r.path);
   return {
     km: r.km,
     exact: r.exact,
     hours: legHours(r.km, mode, kmh),
-    segments: legGeometry(mode, r.path),
+    segments: legGeometry(mode, r.path, set ? set.options[0].portages : undefined),
     carries,
     options,
     optionIndex: 0,
