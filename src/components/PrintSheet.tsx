@@ -1,7 +1,8 @@
 import { moonInfo, sunTimes } from '../lib/astro';
 import { placeById } from '../data/sites';
 import { addDaysIso, fmtCarry, fmtDate, fmtKm, fmtTime } from '../lib/format';
-import { fmtHours, legHours, portagesOnLeg, route } from '../lib/routing';
+import { planLeg } from '../lib/legplan';
+import { fmtHours } from '../lib/routing';
 import type { Camper, Trip } from '../types';
 
 /**
@@ -35,15 +36,15 @@ export default function PrintSheet({
           {trip.stops.slice(0, -1).map((from, i) => {
             const to = trip.stops[i + 1];
             const mode = trip.modes[i] ?? 'paddle';
-            const r = from && to ? route(mode, from, to) : null;
-            const carries = r ? portagesOnLeg(mode, r.path) : [];
+            const plan = from && to ? planLeg(mode, from, to, trip.legRoutes?.[i] ?? 0, mode === 'paddle' ? paddleKmh : hikeKmh) : null;
+            const carries = plan?.carries ?? [];
             return (
               <tr key={i}>
                 <td>{i + 1}</td>
                 <td>{name(from)} → {name(to)}</td>
                 <td>{mode === 'paddle' ? 'paddle' : 'hike'}</td>
-                <td>{r ? fmtKm(r.km) + (r.exact ? '' : ' ≈') : '—'}</td>
-                <td>{r ? '~' + fmtHours(legHours(r.km, mode, mode === 'paddle' ? paddleKmh : hikeKmh)) : '—'}</td>
+                <td>{plan ? fmtKm(plan.km) + (plan.exact ? '' : ' ≈') : '—'}</td>
+                <td>{plan ? '~' + fmtHours(plan.hours) : '—'}</td>
                 <td>{carries.length ? carries.map((c) => `${c.id.slice(2)} (${fmtCarry(c.carryM)})`).join(', ') : '—'}</td>
               </tr>
             );

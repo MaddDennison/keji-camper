@@ -1,7 +1,8 @@
 import { useRef, useState } from 'react';
 import { directoryOrder, placeById } from '../data/sites';
 import { fmtCarry, fmtKm } from '../lib/format';
-import { fmtHours, legHours, portagesOnLeg, route } from '../lib/routing';
+import { planLeg } from '../lib/legplan';
+import { fmtHours } from '../lib/routing';
 import type { Place, TravelMode } from '../types';
 
 /**
@@ -15,10 +16,12 @@ export interface StopCardsProps {
   stops: string[];
   modes: TravelMode[];
   modesLocked: boolean[];
+  legRoutes: number[];
   paddleKmh: number;
   hikeKmh: number;
   onStopsChange: (stops: string[]) => void; // add/remove/reorder/select — modes re-inferred by parent
   onModePick: (legIndex: number, mode: TravelMode) => void; // explicit user choice (locks)
+  onRoutePick: (legIndex: number, optionIndex: number) => void; // chosen portage routing on a branching leg
 }
 
 const QUICK_LAUNCHES = ['bigdam', 'jakes', 'eelweir'];
@@ -34,7 +37,7 @@ function groupedChoices(): { label: string; places: Place[] }[] {
 }
 
 export default function StopCards({
-  stops, modes, modesLocked, paddleKmh, hikeKmh, onStopsChange, onModePick,
+  stops, modes, modesLocked, legRoutes, paddleKmh, hikeKmh, onStopsChange, onModePick, onRoutePick,
 }: StopCardsProps) {
   const [dragIdx, setDragIdx] = useState<number | null>(null);
   const [overIdx, setOverIdx] = useState<number | null>(null);
@@ -89,8 +92,10 @@ export default function StopCards({
                 from={stops[i - 1]} to={stop}
                 mode={modes[i - 1] ?? 'paddle'}
                 locked={modesLocked[i - 1] === true}
+                optionIndex={legRoutes[i - 1] ?? 0}
                 paddleKmh={paddleKmh} hikeKmh={hikeKmh}
                 onPick={(m) => onModePick(i - 1, m)}
+                onRoutePick={(o) => onRoutePick(i - 1, o)}
               />
             )}
             <div
@@ -168,15 +173,16 @@ export default function StopCards({
 }
 
 function LegRow({
-  from, to, mode, locked, paddleKmh, hikeKmh, onPick,
+  from, to, mode, locked, optionIndex, paddleKmh, hikeKmh, onPick, onRoutePick,
 }: {
-  from: string; to: string; mode: TravelMode; locked: boolean;
+  from: string; to: string; mode: TravelMode; locked: boolean; optionIndex: number;
   paddleKmh: number; hikeKmh: number;
   onPick: (m: TravelMode) => void;
+  onRoutePick: (optionIndex: number) => void;
 }) {
   if (!from || !to) return <div className="leg-connector" />;
-  const r = route(mode, from, to);
-  const carries = r ? portagesOnLeg(mode, r.path) : [];
+  const plan = planLeg(mode, from, to, optionIndex, mode === 'paddle' ? paddleKmh : hikeKmh);
+  const carries = plan?.carries ?? [];
   return (
     <div className="leg-row" style={{ borderBottom: 'none', paddingLeft: 30, flexWrap: 'wrap' }}>
       <button
@@ -188,21 +194,37 @@ function LegRow({
         title="Hike this leg" onClick={() => onPick('hike')}
       >🥾</button>
       {!locked && <span className="auto-tag" title="Mode chosen automatically from the sites’ access — tap 🛶/🥾 to override">auto</span>}
-      {r ? (
+      {plan ? (
         <span className="small muted right nowrap">
-          {fmtKm(r.km)} · ~{fmtHours(legHours(r.km, mode, mode === 'paddle' ? paddleKmh : hikeKmh))}
-          {!r.exact && ' ≈'}
+          {fmtKm(plan.km)} · ~{fmtHours(plan.hours)}
+          {!plan.exact && ' ≈'}
         </span>
       ) : (
         <span className="small right" style={{ color: '#9c4220' }}>
           no {mode} route in the charts
         </span>
       )}
+      {plan?.options && plan.options.length > 1 && (
+        <span className="tiny" style={{ flexBasis: '100%', paddingLeft: 2 }}>
+          <span className="muted">portage route:</span>{' '}
+          {plan.options.map((o, oi) => (
+            <button
+              key={oi}
+              className={`btn ghost small ${oi === plan.optionIndex ? 'secondary' : ''}`}
+              style={{ padding: '1px 7px', marginRight: 4 }}
+              title={oi === 0 ? 'The charted way' : 'An alternative routing (distance estimated)'}
+              onClick={() => onRoutePick(oi)}
+            >
+              {o.label}{oi > 0 ? ' ≈' : ''}
+            </button>
+          ))}
+        </span>
+      )}
       {carries.length > 0 && (
         <span
           className="tiny"
           style={{ flexBasis: '100%', paddingLeft: 2, color: '#b3261e' }}
-          title="Portages on this leg — distance already included in the leg total"
+          title="Portages on this leg — carry distance is included in the leg total"
         >
           🥾 {carries.length === 1 ? 'carry' : `${carries.length} carries`}:{' '}
           {carries.map((c) => `${c.id.slice(2)} (${fmtCarry(c.carryM)})`).join(', ')}

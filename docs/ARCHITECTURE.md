@@ -80,6 +80,16 @@ their own chart (documented in `docs/DATA.md`). `EXTRA_EDGES` adds estimated
 connectors for on-water places missing from all charts (Wil-Bo-Wil cabin; Eel Weir,
 which sits on Keji Lake but is charted only for hiking).
 
+**Carries on a leg, and the route picker.** `legCarries()` (routegeo) reports the
+portages a leg crosses by reading the *drawn corridor* — the water corridors were
+rasterized over the carved portage tracks, so a chart-direct leg that folds several
+carries into one figure (e.g. 29 → 30 over G then H) still lists them. Legs with a
+genuine choice of carries (`src/data/legRoutes.ts`, e.g. 30 → 31 via G+H or the
+I+J loop) get a per-leg picker: option 0 keeps the exact chart distance; the rest
+are stitched estimates (≈). The choice lives on the trip (`Trip.legRoutes`), so it
+prints, shares (wire field `r`) and renders on the map via `planLeg()`, the single
+resolver every surface (cards, totals, map overlay, print, share card) goes through.
+
 Travel time = distance ÷ user-set pace (defaults: paddle 4 km/h, hike 3.5 km/h);
 portage time is already inside the paddling chart figures.
 

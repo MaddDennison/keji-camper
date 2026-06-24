@@ -2,12 +2,13 @@ import L from 'leaflet';
 import { useEffect, useRef } from 'react';
 import { PLACES } from '../data/sites';
 import { GEO, portageMeters } from '../lib/mapdata';
-import { legGeometry } from '../lib/routegeo';
+import { legGeometry, type LegSegment } from '../lib/routegeo';
 import type { Place, TravelMode } from '../types';
 
 export interface RouteOverlay {
   nodes: string[]; // routing node ids in travel order
   mode: TravelMode;
+  segments?: LegSegment[]; // precomputed geometry (e.g. an alternative portage route); else derived from nodes
 }
 
 interface Props {
@@ -156,7 +157,7 @@ export default function MapView({ selectedId, visited, routeOverlay, tripPlaceId
     const all: [number, number][] = [];
     routeOverlay.forEach((leg, i) => {
       const color = leg.mode === 'paddle' ? '#3f6f6a' : '#c2562b';
-      for (const seg of legGeometry(leg.mode, leg.nodes)) {
+      for (const seg of leg.segments ?? legGeometry(leg.mode, leg.nodes)) {
         if (seg.points.length < 2) continue;
         all.push(...seg.points);
         const isCarry = !!seg.portage;

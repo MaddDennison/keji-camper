@@ -2,8 +2,9 @@ import { placeById } from '../data/sites';
 import { moonInfo } from './astro';
 import { fmtDate } from './format';
 import { GEO } from './mapdata';
+import { planLeg } from './legplan';
 import { legGeometry } from './routegeo';
-import { fmtHours, legHours, route } from './routing';
+import { fmtHours, legHours } from './routing';
 import { addDaysIso } from './format';
 import type { Memory, Trip } from '../types';
 
@@ -179,12 +180,12 @@ function legsOf(trip: Trip) {
   for (let i = 0; i < trip.stops.length - 1; i++) {
     if (!trip.stops[i] || !trip.stops[i + 1]) continue;
     const mode = trip.modes[i] ?? 'paddle';
-    const r = route(mode, trip.stops[i], trip.stops[i + 1]);
+    const plan = planLeg(mode, trip.stops[i], trip.stops[i + 1], trip.legRoutes?.[i] ?? 0);
     legs.push({
       mode,
-      segs: legGeometry(mode, r ? r.path : [trip.stops[i], trip.stops[i + 1]]),
-      km: r?.km ?? 0,
-      exact: r?.exact ?? false,
+      segs: plan?.segments ?? legGeometry(mode, [trip.stops[i], trip.stops[i + 1]]),
+      km: plan?.km ?? 0,
+      exact: plan?.exact ?? false,
     });
   }
   return legs;

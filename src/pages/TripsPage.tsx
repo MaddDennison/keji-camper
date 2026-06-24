@@ -9,7 +9,8 @@ import WeatherPanel from '../components/WeatherPanel';
 import { TRIP_TEMPLATES } from '../data/templates';
 import { placeById } from '../data/sites';
 import { addDaysIso, fmtDate, fmtKm, uid } from '../lib/format';
-import { fmtHours, legHours, portagesOnLeg, route } from '../lib/routing';
+import { planLeg } from '../lib/legplan';
+import { fmtHours } from '../lib/routing';
 import { encodeTripLink } from '../lib/share';
 import { renderTripCard, shareBlob } from '../lib/sharecard';
 import { applySmartModes, migrateTripModes } from '../lib/tripsmart';
@@ -106,12 +107,12 @@ function tripTotals(trip: Trip, paddleKmh: number, hikeKmh: number) {
   for (let i = 0; i < trip.stops.length - 1; i++) {
     if (!trip.stops[i] || !trip.stops[i + 1]) continue;
     const mode = trip.modes[i] ?? 'paddle';
-    const r = route(mode, trip.stops[i], trip.stops[i + 1]);
-    if (r) {
-      km += r.km;
-      hours += legHours(r.km, mode, mode === 'paddle' ? paddleKmh : hikeKmh);
-      carries += portagesOnLeg(mode, r.path).length;
-      if (!r.exact) allExact = false;
+    const plan = planLeg(mode, trip.stops[i], trip.stops[i + 1], trip.legRoutes?.[i] ?? 0, mode === 'paddle' ? paddleKmh : hikeKmh);
+    if (plan) {
+      km += plan.km;
+      hours += plan.hours;
+      carries += plan.carries.length;
+      if (!plan.exact) allExact = false;
     } else {
       allExact = false;
     }
@@ -161,11 +162,15 @@ function TripEditor({ initial, isNew }: { initial: Trip; isNew: boolean }) {
     for (let i = 0; i < trip.stops.length - 1; i++) {
       if (!trip.stops[i] || !trip.stops[i + 1]) continue;
       const mode = trip.modes[i] ?? 'paddle';
-      const r = route(mode, trip.stops[i], trip.stops[i + 1]);
-      legs.push({ nodes: r ? r.path : [trip.stops[i], trip.stops[i + 1]], mode });
+      const plan = planLeg(mode, trip.stops[i], trip.stops[i + 1], trip.legRoutes?.[i] ?? 0);
+      legs.push({
+        nodes: [trip.stops[i], trip.stops[i + 1]],
+        mode,
+        segments: plan?.segments,
+      });
     }
     return legs;
-  }, [trip.stops, trip.modes]);
+  }, [trip.stops, trip.modes, trip.legRoutes]);
 
   // Place ids belonging to this trip; null when empty so a new trip doesn't fade everything.
   const tripPlaceIds: Set<string> | null = useMemo(() => {
@@ -227,6 +232,13 @@ function TripEditor({ initial, isNew }: { initial: Trip; isNew: boolean }) {
     locked[i] = true;
     const smart = applySmartModes({ stops: trip.stops, modes, modesLocked: locked });
     setTrip({ ...trip, ...smart });
+  };
+
+  const pickRoute = (i: number, optionIndex: number) => {
+    const legRoutes = [...(trip.legRoutes ?? [])];
+    while (legRoutes.length <= i) legRoutes.push(0);
+    legRoutes[i] = optionIndex;
+    setTrip({ ...trip, legRoutes });
   };
 
   const save = () => {
@@ -326,16 +338,19 @@ function TripEditor({ initial, isNew }: { initial: Trip; isNew: boolean }) {
             <p className="tiny muted">
               Drag the cards (or use ▲▼) to reorder. Travel modes are picked automatically from
               each site’s access — tap 🛶/🥾 to override. Distances come from the official charts;
-              ≈ marks legs stitched across charts.
+              ≈ marks legs stitched across charts. Where a leg can be paddled by more than one
+              chain of portages, pick the route — carries and the map line follow your choice.
             </p>
             <StopCards
               stops={trip.stops}
               modes={trip.modes}
               modesLocked={trip.modesLocked ?? trip.modes.map(() => false)}
+              legRoutes={trip.legRoutes ?? []}
               paddleKmh={data.settings.paddleKmh}
               hikeKmh={data.settings.hikeKmh}
               onStopsChange={updateStops}
               onModePick={pickMode}
+              onRoutePick={pickRoute}
             />
             <div className="flex" style={{ marginTop: 10 }}>
               <button className="btn secondary small" onClick={() => updateStops([...trip.stops, ''])}>

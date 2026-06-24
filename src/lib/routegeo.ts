@@ -1,6 +1,6 @@
 import waterways from '../data/waterways.json';
 import { portageBetween } from '../data/portages';
-import { GEO, haversine, nodeCoord } from './mapdata';
+import { GEO, haversine, nodeCoord, portageMeters } from './mapdata';
 import type { TravelMode } from '../types';
 
 /**
@@ -169,4 +169,100 @@ export function legGeometry(mode: TravelMode, pathNodes: string[]): LegSegment[]
     else segs.push({ points: [A.c, B.c], schematic: true });
   }
   return segs;
+}
+
+// ---------- carries on a leg (display) ----------
+
+export interface LegCarry {
+  id: string; // 'P-E'
+  carryM: number; // foot distance of the carry, from the GPX track
+}
+
+/**
+ * Portages a leg actually carries over, in travel order. Unlike the node-pair
+ * `portagesOnLeg` in routing.ts, this reads the *drawn geometry*: the water
+ * corridors were rasterized over the carved portage tracks, so a leg's line
+ * physically runs along every carry it crosses — even chart-direct legs that
+ * fold several portages into one published figure (e.g. site 29 → 30 over
+ * Portage G then H). A portage counts when the line follows enough of its track
+ * to be a real carry, not just a crossing, which filters incidental grazes.
+ */
+function carriesAlong(poly: [number, number][]): { id: string; pos: number }[] {
+  const TOL_M = 35; // corridor grid was carved ~30 m wide over the tracks
+  const hits: { id: string; pos: number }[] = [];
+  for (const p of GEO.portages) {
+    const track = p.points as [number, number][];
+    let close = 0;
+    let firstPos = Infinity;
+    for (const tp of track) {
+      let best = Infinity;
+      let bestI = 0;
+      for (let i = 0; i < poly.length; i++) {
+        const d = haversine(tp, poly[i]);
+        if (d < best) { best = d; bestI = i; }
+      }
+      if (best <= TOL_M) { close++; if (bestI < firstPos) firstPos = bestI; }
+    }
+    // short tracks (≤3 pts) carry on a single close point; longer ones need a
+    // real stretch (≥1/3) so a line clipping a portage end doesn't count.
+    const onIt = track.length <= 3 ? close >= 1 : close / track.length >= 0.34;
+    if (onIt) hits.push({ id: `P-${p.name}`, pos: firstPos });
+  }
+  return hits.sort((a, b) => a.pos - b.pos);
+}
+
+const carryCache = new Map<string, LegCarry[]>();
+
+export function legCarries(mode: TravelMode, pathNodes: string[]): LegCarry[] {
+  if (mode !== 'paddle' || pathNodes.length < 2) return [];
+  const key = pathNodes.join('>');
+  const cached = carryCache.get(key);
+  if (cached) return cached;
+
+  const poly = legGeometry(mode, pathNodes).flatMap((s) => s.points);
+  const pos = new Map<string, number>();
+  for (const h of carriesAlong(poly)) pos.set(h.id, h.pos);
+  // belt-and-suspenders for fully schematic legs (no corridor to read): fall
+  // back to the explicit node-pair links so an estimated leg still names its carry.
+  for (let i = 0; i < pathNodes.length - 1; i++) {
+    const link = portageBetween(pathNodes[i], pathNodes[i + 1]);
+    if (link && !pos.has(link.id)) pos.set(link.id, -1000 + i); // schematic legs: order by hop
+  }
+  const out = [...pos.entries()]
+    .sort((a, b) => a[1] - b[1])
+    .map(([id]) => ({ id, carryM: portageMeters[id] ?? 0 }));
+  carryCache.set(key, out);
+  return out;
+}
+
+/**
+ * Geometry + rough distance for an ALTERNATIVE portage routing the charts don't
+ * publish (e.g. 30→31 around Lower Silver via I+J). We stitch: paddle to the
+ * first carry, walk its track, paddle to the next, and so on. Water hops are
+ * straight lines (no corridor exists for an off-chart route) and the whole
+ * thing is an estimate — callers flag it ≈.
+ */
+export function altRouteGeometry(
+  a: string,
+  b: string,
+  portages: string[],
+): { segments: LegSegment[]; km: number } {
+  const A = nodeCoord(a);
+  const B = nodeCoord(b);
+  if (!A || !B) return { segments: [], km: 0 };
+  const segments: LegSegment[] = [];
+  let cursor = A;
+  let metres = 0;
+  for (const id of portages) {
+    const track = portageTrack(id, cursor);
+    if (!track) continue;
+    segments.push({ points: [cursor, track[0]], schematic: true }); // paddle to the carry
+    metres += haversine(cursor, track[0]);
+    segments.push({ points: track, schematic: false, portage: id }); // the carry
+    metres += portageMeters[id] ?? 0;
+    cursor = track[track.length - 1];
+  }
+  segments.push({ points: [cursor, B], schematic: true }); // paddle out
+  metres += haversine(cursor, B);
+  return { segments, km: Math.round(metres) / 1000 };
 }
