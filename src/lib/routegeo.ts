@@ -234,3 +234,35 @@ export function legCarries(mode: TravelMode, pathNodes: string[]): LegCarry[] {
   carryCache.set(key, out);
   return out;
 }
+
+/**
+ * Geometry + rough distance for an ALTERNATIVE portage routing the charts don't
+ * publish (e.g. 30→31 around Lower Silver via I+J). We stitch: paddle to the
+ * first carry, walk its track, paddle to the next, and so on. Water hops are
+ * straight lines (no corridor exists for an off-chart route) and the whole
+ * thing is an estimate — callers flag it ≈.
+ */
+export function altRouteGeometry(
+  a: string,
+  b: string,
+  portages: string[],
+): { segments: LegSegment[]; km: number } {
+  const A = nodeCoord(a);
+  const B = nodeCoord(b);
+  if (!A || !B) return { segments: [], km: 0 };
+  const segments: LegSegment[] = [];
+  let cursor = A;
+  let metres = 0;
+  for (const id of portages) {
+    const track = portageTrack(id, cursor);
+    if (!track) continue;
+    segments.push({ points: [cursor, track[0]], schematic: true }); // paddle to the carry
+    metres += haversine(cursor, track[0]);
+    segments.push({ points: track, schematic: false, portage: id }); // the carry
+    metres += portageMeters[id] ?? 0;
+    cursor = track[track.length - 1];
+  }
+  segments.push({ points: [cursor, B], schematic: true }); // paddle out
+  metres += haversine(cursor, B);
+  return { segments, km: Math.round(metres) / 1000 };
+}

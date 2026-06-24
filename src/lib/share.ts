@@ -14,6 +14,7 @@ interface WireTrip {
   d: string; // startDate
   s: string[]; // stops
   m: string[]; // modes ('p' | 'h')
+  r?: number[]; // legRoutes (chosen portage routing per leg); omitted when all default
   t?: string; // notes (trimmed)
 }
 
@@ -24,6 +25,7 @@ function toWire(trip: Trip): WireTrip {
     d: trip.startDate,
     s: trip.stops,
     m: trip.modes.map((m) => (m === 'paddle' ? 'p' : 'h')),
+    r: trip.legRoutes?.some((x) => x) ? trip.legRoutes : undefined,
     t: trip.notes ? trip.notes.slice(0, 280) : undefined,
   };
 }
@@ -36,6 +38,7 @@ function fromWire(w: WireTrip): Trip {
     stops: w.s ?? [],
     modes: (w.m ?? []).map((m) => (m === 'h' ? 'hike' : 'paddle')),
     modesLocked: (w.m ?? []).map(() => true),
+    legRoutes: w.r,
     partyIds: [],
     notes: w.t ?? '',
     status: 'planned',

@@ -39,6 +39,8 @@ export interface Trip {
   modes: TravelMode[]; // modes[i] = mode of leg stops[i] -> stops[i+1]
   /** modesLocked[i]: the user explicitly chose modes[i]; smart inference must not touch it */
   modesLocked?: boolean[];
+  /** legRoutes[i]: chosen portage-routing option for leg i where it branches (0/undefined = default). */
+  legRoutes?: number[];
   partyIds: string[];
   notes: string;
   status: TripStatus;

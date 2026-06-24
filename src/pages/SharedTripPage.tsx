@@ -4,7 +4,8 @@ import MapView, { type RouteOverlay } from '../components/MapView';
 import SkyPanel from '../components/SkyPanel';
 import { placeById } from '../data/sites';
 import { addDaysIso, fmtDate, fmtKm } from '../lib/format';
-import { fmtHours, legHours, route } from '../lib/routing';
+import { planLeg } from '../lib/legplan';
+import { fmtHours } from '../lib/routing';
 import { decodeTripLink } from '../lib/share';
 import { useStore } from '../lib/store';
 import type { Trip } from '../types';
@@ -25,8 +26,8 @@ export default function SharedTripPage({ payload }: { payload: string }) {
     for (let i = 0; i < trip.stops.length - 1; i++) {
       if (!trip.stops[i] || !trip.stops[i + 1]) continue;
       const mode = trip.modes[i] ?? 'paddle';
-      const r = route(mode, trip.stops[i], trip.stops[i + 1]);
-      legs.push({ nodes: r ? r.path : [trip.stops[i], trip.stops[i + 1]], mode });
+      const plan = planLeg(mode, trip.stops[i], trip.stops[i + 1], trip.legRoutes?.[i] ?? 0);
+      legs.push({ nodes: [trip.stops[i], trip.stops[i + 1]], mode, segments: plan?.segments });
     }
     return legs;
   }, [trip]);
@@ -73,16 +74,16 @@ export default function SharedTripPage({ payload }: { payload: string }) {
             {trip.stops.slice(0, -1).map((from, i) => {
               const to = trip.stops[i + 1];
               const mode = trip.modes[i] ?? 'paddle';
-              const r = from && to ? route(mode, from, to) : null;
+              const plan = from && to ? planLeg(mode, from, to, trip.legRoutes?.[i] ?? 0) : null;
               return (
                 <div key={i} className="leg-row">
                   <span className="mode-ic">{mode === 'paddle' ? '🛶' : '🥾'}</span>
                   <span className="small">
                     {placeById.get(from)?.name ?? from} → {placeById.get(to)?.name ?? to}
                   </span>
-                  {r && (
+                  {plan && (
                     <span className="small muted right nowrap">
-                      {fmtKm(r.km)} · ~{fmtHours(legHours(r.km, mode))}{!r.exact && ' ≈'}
+                      {fmtKm(plan.km)} · ~{fmtHours(plan.hours)}{!plan.exact && ' ≈'}
                     </span>
                   )}
                 </div>
