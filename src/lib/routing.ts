@@ -1,4 +1,6 @@
 import { CHARTS, EXTRA_EDGES, EXCLUDED_EDGES } from '../data/distances';
+import { PORTAGE_LINKS, portageBetween, type PortageLink } from '../data/portages';
+import { placeById } from '../data/sites';
 import type { RouteResult, TravelMode } from '../types';
 
 interface Edge {
@@ -43,16 +45,29 @@ for (const chart of CHARTS) {
       const b = chart.nodes[i + 1 + k];
       if (excluded(a, b)) return;
       // The charts measure “Portage X” cells from whichever END of the
-      // portage is nearer, so a portage node would let Dijkstra transit a
-      // carry for free (Portage E is 2 km!). Portage rows stay available for
-      // the chart viewer, but the routing graph stitches only through real
-      // points: sites, cabins, launches and named waypoints.
+      // portage is nearer, so using a chart portage CELL as an edge would let
+      // Dijkstra transit a carry for free (Portage E is 2 km!). We skip those
+      // cells here; carries are added explicitly below from PORTAGE_LINKS,
+      // weighted by their true GPX length, which can't teleport.
       if (a.startsWith('P-') || b.startsWith('P-')) return;
       addEdge(chart.mode, a, b, km, false);
     });
   });
 }
 for (const e of EXTRA_EDGES) addEdge(e.mode, e.a, e.b, e.km, true);
+
+// Portages: a carry links two water bodies. We weight it with the *true* carry
+// length (from the GPX track) plus an open-water approach, so Dijkstra can no
+// longer "teleport" across a carry the way it would have on the raw chart cells
+// (the reason portage nodes used to be excluded above). Where a chart already
+// covers the pair, addEdge keeps the shorter published value, so these only add
+// connectivity where none existed (e.g. Eel Weir → the southern lakes).
+for (const p of PORTAGE_LINKS) {
+  // A carry connects water: never wire one to a hike-only site (it would invent
+  // a canoe route to a trail site and skew smart-mode inference).
+  if (placeById.get(p.a)?.access === 'hike' || placeById.get(p.b)?.access === 'hike') continue;
+  addEdge(p.mode, p.a, p.b, (p.approachM + p.carryM) / 1000, true);
+}
 
 /** All node ids reachable in a given mode. */
 export function nodesForMode(mode: TravelMode): Set<string> {
@@ -121,6 +136,22 @@ export function route(mode: TravelMode, from: string, to: string): RouteResult |
   }
   const km = dist.get(to)!;
   return { km: Math.round(km * 100) / 100, exact: false, path };
+}
+
+/**
+ * Carries crossed by a routed leg, in travel order, by scanning consecutive
+ * node pairs of its path. Works for stitched legs (the portage edge is on the
+ * path) and for chart-direct legs (the chart bakes the carry in, but the pair
+ * still matches a portage link), so a paddler always sees where they portage.
+ */
+export function portagesOnLeg(mode: TravelMode, path: string[]): PortageLink[] {
+  if (mode !== 'paddle') return [];
+  const out: PortageLink[] = [];
+  for (let i = 0; i < path.length - 1; i++) {
+    const p = portageBetween(path[i], path[i + 1]);
+    if (p) out.push(p);
+  }
+  return out;
 }
 
 const PACES: Record<TravelMode, number> = { paddle: 4, hike: 3.5 };

@@ -9,7 +9,7 @@ import WeatherPanel from '../components/WeatherPanel';
 import { TRIP_TEMPLATES } from '../data/templates';
 import { placeById } from '../data/sites';
 import { addDaysIso, fmtDate, fmtKm, uid } from '../lib/format';
-import { fmtHours, legHours, route } from '../lib/routing';
+import { fmtHours, legHours, portagesOnLeg, route } from '../lib/routing';
 import { encodeTripLink } from '../lib/share';
 import { renderTripCard, shareBlob } from '../lib/sharecard';
 import { applySmartModes, migrateTripModes } from '../lib/tripsmart';
@@ -101,6 +101,7 @@ export default function TripsPage({ tripId }: { tripId?: string }) {
 function tripTotals(trip: Trip, paddleKmh: number, hikeKmh: number) {
   let km = 0;
   let hours = 0;
+  let carries = 0;
   let allExact = true;
   for (let i = 0; i < trip.stops.length - 1; i++) {
     if (!trip.stops[i] || !trip.stops[i + 1]) continue;
@@ -109,16 +110,17 @@ function tripTotals(trip: Trip, paddleKmh: number, hikeKmh: number) {
     if (r) {
       km += r.km;
       hours += legHours(r.km, mode, mode === 'paddle' ? paddleKmh : hikeKmh);
+      carries += portagesOnLeg(mode, r.path).length;
       if (!r.exact) allExact = false;
     } else {
       allExact = false;
     }
   }
-  return { km, hours, allExact };
+  return { km, hours, carries, allExact };
 }
 
 function TripCard({ trip, paddleKmh, hikeKmh }: { trip: Trip; paddleKmh: number; hikeKmh: number }) {
-  const { km, hours } = tripTotals(trip, paddleKmh, hikeKmh);
+  const { km, hours, carries } = tripTotals(trip, paddleKmh, hikeKmh);
   const nights = Math.max(0, trip.stops.length - 2);
   return (
     <div className="card" style={{ cursor: 'pointer' }} onClick={() => navigate('trips', trip.id)}>
@@ -134,6 +136,7 @@ function TripCard({ trip, paddleKmh, hikeKmh }: { trip: Trip; paddleKmh: number;
       </p>
       <div className="small">
         <b>{fmtKm(km)}</b> · ~{fmtHours(hours)} travel
+        {carries > 0 && <> · {carries} {carries === 1 ? 'carry' : 'carries'}</>}
       </div>
     </div>
   );
@@ -341,6 +344,7 @@ function TripEditor({ initial, isNew }: { initial: Trip; isNew: boolean }) {
               {trip.stops.filter(Boolean).length > 1 && (
                 <span className="small right">
                   <b>{fmtKm(totals.km)}</b> · ~{fmtHours(totals.hours)} total
+                  {totals.carries > 0 && <span> · {totals.carries} {totals.carries === 1 ? 'carry' : 'carries'}</span>}
                   {!totals.allExact && <span className="muted"> (incl. estimates)</span>}
                 </span>
               )}
