@@ -82,6 +82,19 @@ export default function AboutPage() {
         </p>
       </div>
 
+      <div className="card">
+        <h3>Free — and open</h3>
+        <p className="small">
+          Keji Camper is free and always will be — no ads, no paywall, and never a charge to
+          plan a trip. If it’s saved you a soggy paper map or carried a February daydream and
+          you’d like to chip in, you can{' '}
+          <a href="https://buymeacoffee.com/maddie.denn" target="_blank" rel="noreferrer">buy me a coffee ☕</a>{' '}
+          — entirely optional, never expected. It’s also built in the open: to report a bug,
+          suggest a site, or poke at the code, the project lives on{' '}
+          <a href="https://github.com/MaddDennison/keji-camper" target="_blank" rel="noreferrer">GitHub</a>.
+        </p>
+      </div>
+
       <p className="tiny muted" style={{ textAlign: 'center', margin: '20px 0' }}>
         Built with a canoe-load of respect for Kejimkujik, the Mi’kmaq whose land this is,
         Parks Canada staff, and the Friends of Keji volunteers. 🛶 under 🌌

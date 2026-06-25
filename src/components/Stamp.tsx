@@ -68,7 +68,18 @@ export default function Stamp({
   const uid = `st-${place.id.replace(/[^a-zA-Z0-9]/g, '')}`;
   const wearSeed = (h % 97) + 1;
 
-  const topText = place.lake.split('/')[0].trim().toUpperCase();
+  // Top arc shows the lake. Drop the slash-alternate and the parenthetical
+  // disambiguator ("Kejimkujik Lake (Minards Bay)" → "KEJIMKUJIK LAKE") — the
+  // centre numeral already identifies the site — then shrink to fit the arc so
+  // long names never clip (the arc is a fixed ~138-unit semicircle).
+  const topText = place.lake.split('/')[0].replace(/\s*\(.*?\)/g, '').trim().toUpperCase();
+  const TOP_ARC = Math.PI * 44; // length of the top semicircle path below
+  const BASE_FONT = 8.6;
+  const BASE_SPACING = 1.6;
+  const estWidth = topText.length * (BASE_FONT * 0.58 + BASE_SPACING);
+  const fit = Math.min(1, (TOP_ARC * 0.94) / (estWidth || 1));
+  const topFont = BASE_FONT * fit;
+  const topSpacing = BASE_SPACING * fit;
   const bottomText = 'KEJIMKUJIK BACKCOUNTRY';
 
   if (ghost) {
@@ -96,7 +107,7 @@ export default function Stamp({
         <circle r="56" fill="none" strokeWidth="3.2" />
         <circle r="50.5" fill="none" strokeWidth="1.2" />
         <circle r="30" fill="none" strokeWidth="1.1" />
-        <text fontFamily="Work Sans, sans-serif" fontWeight="700" fontSize="8.6" letterSpacing="1.6" stroke="none">
+        <text fontFamily="Work Sans, sans-serif" fontWeight="700" fontSize={topFont} letterSpacing={topSpacing} stroke="none">
           <textPath href={`#${uid}-top`} startOffset="50%" textAnchor="middle">{topText}</textPath>
         </text>
         <text fontFamily="Work Sans, sans-serif" fontWeight="600" fontSize="6.6" letterSpacing="1.8" stroke="none" opacity="0.85">

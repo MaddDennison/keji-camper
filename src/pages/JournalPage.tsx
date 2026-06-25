@@ -7,9 +7,8 @@ import { useAuth } from '../lib/auth';
 import { computeBadges } from '../lib/badges';
 import { renderMemoryCard, shareBlob } from '../lib/sharecard';
 import { fmtDate, paddles, todayIso, uid } from '../lib/format';
-import { cabinStampCounts } from '../lib/social';
 import { compressPhoto, useStore } from '../lib/store';
-import { AttendeeLine, useProfiles, useSocial } from '../lib/useLogbook';
+import { AttendeeLine, useProfiles } from '../lib/useLogbook';
 import type { SocialProfile } from '../lib/useLogbook';
 import type { Camper, Memory } from '../types';
 
@@ -300,11 +299,6 @@ function MemoryForm({
 
 function Passport({ visited, memories }: { visited: Set<string>; memories: Memory[] }) {
   const { data } = useStore();
-  const { session } = useAuth();
-  // Read-only cabin overlay (M4): counts come from the ephemeral logbook
-  // query, never from local state — logged out, the passport is unchanged.
-  const { broadcastRows } = useSocial();
-  const cabin = session ? cabinStampCounts(broadcastRows, session.user.id) : new Map<string, number>();
   const campPlaces = PLACES.filter((p) => p.kind !== 'launch');
   const stamped = campPlaces.filter((p) => visited.has(p.id));
   const badges = computeBadges(data.memories, data.trips);
@@ -322,22 +316,13 @@ function Passport({ visited, memories }: { visited: Set<string>; memories: Memor
       <p className="small muted">
         A stamp appears when a site has a memory, or is part of a completed trip.
         Collect them all and you’ve slept everywhere a person can sleep in the Keji backcountry.
-        {session && cabin.size > 0 && ' Tallies under a stamp show how many other campers have logged that site in the cabin logbook.'}
       </p>
       <div className="stamp-grid">
-        {campPlaces.map((p) => {
-          const others = cabin.get(p.id) ?? 0;
-          return (
-            <div key={p.id} className="stamp-cell" title={p.name}>
-              <Stamp place={p} ghost={!visited.has(p.id)} year={yearFor(p.id)} />
-              {others > 0 && (
-                <div className="tiny muted" style={{ textAlign: 'center' }}>
-                  +{others} camper{others === 1 ? '' : 's'}
-                </div>
-              )}
-            </div>
-          );
-        })}
+        {campPlaces.map((p) => (
+          <div key={p.id} className="stamp-cell" title={p.name}>
+            <Stamp place={p} ghost={!visited.has(p.id)} year={yearFor(p.id)} />
+          </div>
+        ))}
       </div>
 
       <div className="section-head" style={{ marginTop: 22 }}>
