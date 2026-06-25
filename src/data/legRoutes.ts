@@ -9,6 +9,9 @@ import { portageMeters } from '../lib/mapdata';
  *
  * Only branching legs live here — every non-branching leg's carries are read
  * straight from the drawn corridor (see legCarries in routegeo.ts).
+ *
+ * TODO(v0.3 F11, docs/PLAN-v0.3.md): generate these options for ANY site pair
+ * from a water-body graph (Yen's k-shortest paths) instead of hand-listing them.
  */
 export interface RouteOption {
   portages: string[]; // ordered carry ids, e.g. ['P-G','P-H']

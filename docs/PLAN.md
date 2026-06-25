@@ -68,6 +68,32 @@ you stamp every time you sleep at a new site.
 - export "trip cards" as images; import a friend's JSON into a combined passport view
 - print-friendly trip sheet (matrix of legs, times, sunset/moonrise) to pack with the map
 
+### v0.2.x — the portage planner (shipped)
+
+The canoe planner became portage-aware (PRs #17–#19; design notes in
+[`docs/PLAN-v0.3.md`](PLAN-v0.3.md) “Shipped”):
+
+- **Portages route as connectors** — carries are graph edges weighted by their true
+  GPX length, so canoe routes cross between lake systems that share no chart (Eel Weir
+  → North Cranberry over Portage E) instead of dead-ending at “no paddle route”.
+- **Carries surface on every leg** — listed in travel order (29 → 30 = G then H),
+  including chart-direct legs that fold several into one published figure, and drawn
+  bold red on the map.
+- **Per-leg portage-route picker** — where a leg can be paddled more than one way
+  (30 → 31 via G+H or the I+J loop), the user picks; map, distance, time, carries and
+  share/print follow. Default keeps the exact chart figure; alternatives are ≈.
+- **Water-following alternatives** — off-chart alternates A* their water segments over
+  the OSM grid, so the line reroutes along real water, not a straight hop.
+
+### v0.3 — routes that think, days that flex (planned)
+
+See [`docs/PLAN-v0.3.md`](PLAN-v0.3.md):
+
+- **F11** — generate portage routes between *any* two sites from a water-body graph
+  (Yen’s k-shortest paths), retiring the hand-curated branch lists.
+- **F12** — same-day stops: scenic detours and basecamp day trips that add travel
+  without adding a night (design-first).
+
 ### v1.0 — multi-user
 
 - Swap the storage adapter (see `docs/ARCHITECTURE.md` §6) for a hosted backend

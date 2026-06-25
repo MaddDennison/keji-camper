@@ -35,7 +35,11 @@ export interface Trip {
   id: string;
   name: string;
   startDate: string; // ISO yyyy-mm-dd of night 1
-  stops: string[]; // ordered place ids; legs derived between consecutive stops
+  // ordered place ids; legs derived between consecutive stops. Each interior stop
+  // is currently one night (nights derive from count).
+  // TODO(v0.3 F12, docs/PLAN-v0.3.md): allow same-day stops — scenic detours and
+  // basecamp day trips that add travel without adding a night.
+  stops: string[];
   modes: TravelMode[]; // modes[i] = mode of leg stops[i] -> stops[i+1]
   /** modesLocked[i]: the user explicitly chose modes[i]; smart inference must not touch it */
   modesLocked?: boolean[];
