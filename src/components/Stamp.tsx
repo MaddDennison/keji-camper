@@ -68,6 +68,8 @@ export default function Stamp({
   const uid = `st-${place.id.replace(/[^a-zA-Z0-9]/g, '')}`;
   const wearSeed = (h % 97) + 1;
 
+  // TODO(v0.3 F14, docs/PLAN-v0.3.md): long lake names clip on the top arc below —
+  // fit them (auto-shrink to the arc / abbreviate) or truncate deliberately.
   const topText = place.lake.split('/')[0].trim().toUpperCase();
   const bottomText = 'KEJIMKUJIK BACKCOUNTRY';
 

@@ -1,4 +1,6 @@
 export default function AboutPage() {
+  // TODO(v0.3 F13, docs/PLAN-v0.3.md): add a "Support & contribute" card here — an
+  // optional buy-me-a-coffee link (the app stays free) + a GitHub repo link for contributors.
   return (
     <main className="page" style={{ maxWidth: 760 }}>
       <div className="section-head">

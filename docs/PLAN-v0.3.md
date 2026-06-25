@@ -133,7 +133,43 @@ print/share (show the full day’s itinerary), share-link wire format (+ optiona
 - How do same-day legs interact with the F11 portage picker and the per-night cards?
 
 Mark as **design-needed**; revisit once F11 lands (a day trip is just another routed
-leg, so it benefits from general routing).
+leg, so it benefits from general routing). *(F11 has since shipped — PR #21.)*
+
+---
+
+## Polish & community
+
+Unrelated to the routing thrust; small, independent wins.
+
+### F13 · Support & contribute links *(S)*
+
+The app is and stays free — never a paywall, never a direct ask. But early (non-technical)
+users have offered to chip in, so give the optional "buy me a coffee" link a tasteful home,
+plus a GitHub link for people who want to contribute code.
+
+- A **"Support & contribute"** card at the bottom of `src/pages/AboutPage.tsx` (it already
+  hosts the credits/links cards): one line "Keji Camper is free — if it's saved you a soggy
+  map, you can buy me a coffee ☕" → the buy-me-a-coffee URL; and "Built in the open —
+  contribute or file an issue on GitHub" → the repo (github.com/MaddDennison/keji-camper).
+- Keep it unobtrusive and on-brand (no nag, no modal). A small footer link is optional.
+- **Needs from owner:** the actual buy-me-a-coffee URL.
+
+### F14 · Passport stamp consistency *(S)*
+
+Two issues in the passport grid (`src/pages/JournalPage.tsx` `.stamp-grid` + `Stamp.tsx`):
+
+- **Inconsistent layout when others have logged a site.** The cabin-logbook "+N campers"
+  caption under some stamps (JournalPage.tsx, the `others > 0` block) changes those cells'
+  height, so stamps look small/offset relative to their neighbours. Decision: **drop the
+  per-stamp party/with-others indication entirely** — keep every stamp simple and identical
+  regardless of who you camped with. Remove the caption (and the explanatory sentence about
+  cabin tallies); if the social tally is still wanted, surface it elsewhere, not under the stamp.
+- **Long names truncate on the stamp.** The top arc text (`Stamp.tsx` `topText`, drawn along
+  the 44-radius `textPath`) clips when the lake name is long (e.g. "Kejimkujik Lake (Minards
+  Bay)"). Make the full name fit or truncate *deliberately*: auto-shrink the font to the arc
+  length, abbreviate consistently, or wrap — pick one and apply it uniformly.
+
+Both are contained UI fixes; no data or routing impact.
 
 ---
 

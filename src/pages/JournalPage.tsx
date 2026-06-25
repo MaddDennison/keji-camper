@@ -330,6 +330,9 @@ function Passport({ visited, memories }: { visited: Set<string>; memories: Memor
           return (
             <div key={p.id} className="stamp-cell" title={p.name}>
               <Stamp place={p} ghost={!visited.has(p.id)} year={yearFor(p.id)} />
+              {/* TODO(v0.3 F14, docs/PLAN-v0.3.md): this caption makes some cells taller,
+                  so stamps look small/offset — drop the per-stamp party indication for a
+                  consistent grid (and surface the cabin tally elsewhere if still wanted). */}
               {others > 0 && (
                 <div className="tiny muted" style={{ textAlign: 'center' }}>
                   +{others} camper{others === 1 ? '' : 's'}
