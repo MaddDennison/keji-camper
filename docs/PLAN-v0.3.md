@@ -154,7 +154,7 @@ plus a GitHub link for people who want to contribute code.
 - Keep it unobtrusive and on-brand (no nag, no modal). A small footer link is optional.
 - **Needs from owner:** the actual buy-me-a-coffee URL.
 
-### F14 · Passport stamp consistency *(S)*
+### F14 · Passport stamp consistency *(S)* — ✅ shipped
 
 Two issues in the passport grid (`src/pages/JournalPage.tsx` `.stamp-grid` + `Stamp.tsx`):
 
