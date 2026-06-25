@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { navigate } from '../App';
+import CarryNote from './CarryNote';
 import { placeById } from '../data/sites';
 import { fmtKm, fmtDate, paddles } from '../lib/format';
 import { legHours, fmtHours, route } from '../lib/routing';
@@ -57,6 +58,7 @@ export default function SiteDrawer({ place, onClose }: { place: Place; onClose: 
         {place.bookable && <span className="chip muted">reservable</span>}
       </div>
       <p className="small">{place.blurb}</p>
+      <CarryNote ids={place.carries} />
       {place.tips && <p className="small muted">💡 {place.tips}</p>}
 
       {distances.length > 0 && (

@@ -1,9 +1,17 @@
 import L from 'leaflet';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { PORTAGE_NAMES } from '../data/distances';
 import { PLACES } from '../data/sites';
+import { fmtCarry } from '../lib/format';
 import { GEO, portageMeters } from '../lib/mapdata';
 import { legGeometry, type LegSegment } from '../lib/routegeo';
 import type { Place, TravelMode } from '../types';
+
+/** Every carry, alphabetical, with its length from portageMeters (the map tooltip
+ *  and the site carry notes read the same figure). */
+const PORTAGE_LIST = Object.keys(portageMeters)
+  .sort()
+  .map((id) => ({ id, name: PORTAGE_NAMES[id] ?? id, meters: portageMeters[id] }));
 
 export interface RouteOverlay {
   nodes: string[]; // routing node ids in travel order
@@ -45,6 +53,7 @@ export default function MapView({ selectedId, visited, routeOverlay, tripPlaceId
   const mapRef = useRef<L.Map | null>(null);
   const markersRef = useRef<Map<string, L.Marker>>(new Map());
   const routeLayerRef = useRef<L.LayerGroup | null>(null);
+  const [portagesOpen, setPortagesOpen] = useState(false);
 
   // create map once
   useEffect(() => {
@@ -200,8 +209,26 @@ export default function MapView({ selectedId, visited, routeOverlay, tripPlaceId
         <div className="row"><span className="dot" style={{ background: '#5b3e80' }} /> group site</div>
         <div className="row"><span className="dot" style={{ background: '#8a5a18' }} /> cabin</div>
         <div className="row"><span className="dot" style={{ background: '#c2562b' }} /> launch / trailhead</div>
-        <div className="row"><span style={{ color: '#b3261e', fontWeight: 800 }}>━</span> portage</div>
+        <button
+          type="button"
+          className="row legend-toggle"
+          aria-expanded={portagesOpen}
+          onClick={() => setPortagesOpen((o) => !o)}
+        >
+          <span style={{ color: '#b3261e', fontWeight: 800 }}>━</span> portages
+          <span className="legend-caret">{portagesOpen ? '▾' : '▸'}</span>
+        </button>
         <div className="row"><span style={{ color: '#9c4220', fontWeight: 800 }}>┄</span> trail</div>
+        {portagesOpen && (
+          <div className="portage-list">
+            {PORTAGE_LIST.map((c) => (
+              <div key={c.id} className="prow">
+                <span>{c.name}</span>
+                <span className="muted">{fmtCarry(c.meters)}</span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
