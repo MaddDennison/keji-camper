@@ -4,7 +4,8 @@ import { planLeg } from '../src/lib/legplan';
 describe('planLeg — branch-leg portage picker', () => {
   it('30 → 31 default is G + H at the chart distance (exact)', () => {
     const p = planLeg('paddle', '30', '31', 0)!;
-    expect(p.carries.map((c) => c.id)).toEqual(['P-G', 'P-H']);
+    // carries in travel order from site 30 (Lower Silver): H then G
+    expect(p.carries.map((c) => c.id)).toEqual(['P-H', 'P-G']);
     expect(p.exact).toBe(true);
     expect(p.options?.map((o) => o.label)).toHaveLength(2);
     expect(p.optionIndex).toBe(0);

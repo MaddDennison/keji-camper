@@ -24,15 +24,16 @@ sys.path.insert(0, HERE)
 import build_water_routes as bw  # reuse fetch_water, build_grid, snap, astar, dp_simplify
 
 OUT = os.path.join(HERE, "..", "src", "data", "altroutes.json")
+SPECS_IN = os.path.join(HERE, "source", "altspecs.json")
 
-# Alternatives transcribed from src/data/legRoutes.ts (site coords from sites.ts).
-# Defaults already follow water via the chart corridors, so only the alternatives
-# need building here. `key` is order-independent: sorted node pair + sorted carries,
-# matching the lookup in src/lib/routegeo.ts.
-SPECS = [
-    {"a_id": "30", "b_id": "31", "a": [44.29023, -65.25251], "b": [44.31844, -65.27504], "portages": ["I", "J"]},
-    {"a_id": "25", "b_id": "29", "a": [44.33339, -65.26226], "b": [44.30136, -65.24617], "portages": ["F"]},
-]
+# The alternative portage routings to build water geometry for, emitted by the
+# F11 leg-scale gate (see tests/_emit step in the F11 work / src/lib/legplan.ts):
+# every non-default route on a short branching leg. Each spec is
+# {a_id, b_id, a:[lat,lng], b:[lat,lng], portages:[letters]}. Defaults already
+# follow water via the chart corridors, so only the alternatives need building.
+# `key` is order-independent: sorted node pair + sorted carries, matching the
+# lookup in src/lib/routegeo.ts.
+SPECS = json.load(open(SPECS_IN))
 
 
 def alt_key(a_id, b_id, portages):
