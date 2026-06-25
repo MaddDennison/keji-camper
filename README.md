@@ -18,6 +18,11 @@ parks-brochure soul.**
   get distances **straight from the official Friends of Keji distance charts**
   (paddling figures include portages). Cross-region legs are stitched over a routing
   graph and marked ≈. Travel times use your party’s pace.
+- **Portage-aware paddling** — every canoe leg lists the carries it crosses (letter +
+  metres, in travel order) and draws them bold red on the map. Carries connect lake
+  systems the charts don’t, so routes like Eel Weir → North Cranberry just work. Where
+  a leg can be paddled more than one way (e.g. the I+J loop around Lower Silver), pick
+  the route — the line, distance, carries and print/share all follow.
 - **Weather per night** — Open-Meteo (keyless): real forecast inside 16 days,
   the *actual* historical weather for past trip dates, and a same-dates-last-year
   hint for far-future dreams. Wind-gust warnings for the big lakes.
