@@ -1,4 +1,5 @@
 import geo from '../data/geo.json';
+import { PORTAGE_NAMES } from '../data/distances';
 import { placeById } from '../data/sites';
 
 export interface Track {
@@ -29,6 +30,24 @@ for (const p of GEO.portages) {
     m += haversine(p.points[i - 1], p.points[i]);
   }
   portageMeters[`P-${p.name}`] = Math.round(m / 10) * 10;
+}
+
+export interface CarryInfo {
+  id: string; // 'P-R'
+  name: string; // 'Portage R'
+  meters: number; // from portageMeters — the single source of truth
+}
+
+/**
+ * Resolve a site's `carries` ids to name + length, pulling the metres from
+ * portageMeters so the figure always matches the map tooltip and the published
+ * tracks. Unknown ids are dropped rather than shown with a guessed length.
+ */
+export function carriesFor(ids: string[] | undefined): CarryInfo[] {
+  if (!ids) return [];
+  return ids
+    .filter((id) => portageMeters[id] != null)
+    .map((id) => ({ id, name: PORTAGE_NAMES[id] ?? id, meters: portageMeters[id] }));
 }
 
 export function haversine(a: [number, number], b: [number, number]): number {

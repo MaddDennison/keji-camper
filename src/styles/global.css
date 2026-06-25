@@ -197,6 +197,17 @@ main.page.full {
 .chip.launch { color: var(--pine-deep); }
 .chip.muted { color: var(--ink-soft); }
 
+/* Carry note: one quiet line under a site's blurb. The little bar echoes the
+   red portage line on the map. */
+.carry-note {
+  display: flex; align-items: center; gap: 7px;
+  margin: 6px 0 0; color: var(--rust-deep); font-weight: 600;
+}
+.carry-dot {
+  flex: none; width: 13px; height: 3px; border-radius: 2px;
+  background: #b3261e;
+}
+
 /* min-width:0 lets a .field shrink when it's a flex item (e.g. the date +
    status row), instead of being held wide by its control's intrinsic size. */
 .field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; min-width: 0; }
@@ -246,6 +257,17 @@ table.data td.head { background: var(--parchment-dim); font-weight: 700; text-al
   box-shadow: var(--shadow);
 }
 .map-legend .row { display: flex; align-items: center; gap: 7px; }
+.map-legend .legend-toggle {
+  background: none; border: none; padding: 0; margin: 0;
+  font: inherit; color: inherit; cursor: pointer; width: 100%; text-align: left;
+}
+.map-legend .legend-caret { margin-left: auto; color: var(--ink-soft); }
+.map-legend .portage-list {
+  margin-top: 5px; padding-top: 5px; border-top: 1px solid var(--ink-soft);
+  max-height: 184px; overflow-y: auto; min-width: 150px;
+}
+.map-legend .prow { display: flex; justify-content: space-between; gap: 14px; }
+.map-legend .prow .muted { color: var(--ink-soft); font-variant-numeric: tabular-nums; }
 .dot { width: 12px; height: 12px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1.4px var(--ink); flex: none; }
 
 .site-pin {

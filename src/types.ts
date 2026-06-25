@@ -12,6 +12,10 @@ export interface Place {
   access: Access;
   blurb: string;
   tips?: string;
+  // Portage ids (e.g. 'P-R') this site physically sits on, in travel order.
+  // Lengths are never stored here — they render from portageMeters so they
+  // stay in sync with the GPX. Sites merely *near* a carry keep it in prose.
+  carries?: string[];
   bookable?: boolean; // appears in the Parks Canada reservation system
 }
 

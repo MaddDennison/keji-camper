@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { navigate } from '../App';
+import CarryNote from '../components/CarryNote';
 import { CHARTS, PORTAGE_NAMES, WAYPOINT_NAMES } from '../data/distances';
 import { directoryOrder, placeById } from '../data/sites';
 import { useStore } from '../lib/store';
@@ -86,6 +87,7 @@ export default function SitesPage({ siteId }: { siteId?: string }) {
               {p.kind === 'cabin' && <span className="chip cabin">cabin</span>}
             </div>
             <p className="small" style={{ margin: 0 }}>{p.blurb}</p>
+            <CarryNote ids={p.carries} />
           </div>
         ))}
       </div>
@@ -144,6 +146,7 @@ function FocusCard({ place, visited }: { place: Place; visited: boolean }) {
       </div>
       <div className="small muted">{place.lake} · {place.lat.toFixed(4)}, {place.lng.toFixed(4)}</div>
       <p className="small">{place.blurb}</p>
+      <CarryNote ids={place.carries} />
       {place.tips && <p className="small muted">💡 {place.tips}</p>}
     </div>
   );

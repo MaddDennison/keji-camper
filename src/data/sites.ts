@@ -33,13 +33,15 @@ export const PLACES: Place[] = [
   {
     id: '4', label: '4', name: 'Site 4 · Still Brook', lake: 'Still Brook',
     lat: 44.45551, lng: -65.29311, kind: 'site', access: 'paddle', bookable: true,
-    blurb: 'Tucked along Still Brook between Big Dam and Frozen Ocean Lake, right by Portage R (708 m).',
+    blurb: 'Tucked along Still Brook between Big Dam and Frozen Ocean Lake, right by Portage R.',
+    carries: ['P-R'],
     tips: 'Sheltered water — a good choice when the big lakes are windy.',
   },
   {
     id: '5', label: '5', name: 'Site 5 · Frozen Ocean Lake', lake: 'Frozen Ocean Lake',
     lat: 44.45337, lng: -65.33684, kind: 'site', access: 'both', bookable: true,
     blurb: 'North side of Frozen Ocean Lake beside Portage S. Big-water sunsets over the park’s loneliest large lake.',
+    carries: ['P-S'],
   },
   {
     id: '6', label: '6', name: 'Site 6 · Frozen Ocean Lake', lake: 'Frozen Ocean Lake',
@@ -60,6 +62,7 @@ export const PLACES: Place[] = [
     id: '9', label: '9', name: 'Site 9 · Little River', lake: 'Little River',
     lat: 44.42027, lng: -65.30719, kind: 'site', access: 'paddle', bookable: true,
     blurb: 'On the Little River run between Frozen Ocean and Kejimkujik Lake, beside Portage V and a short hop from Channel Lake.',
+    carries: ['P-V'],
   },
   {
     id: '10', label: '10', name: 'Site 10 · Little River', lake: 'Little River',
@@ -69,7 +72,7 @@ export const PLACES: Place[] = [
   {
     id: '11', label: '11', name: 'Site 11 · Little River mouth', lake: 'Little River / Kejimkujik Lake',
     lat: 44.4018, lng: -65.28388, kind: 'site', access: 'paddle', bookable: true,
-    blurb: 'Where the Little River meets Kejimkujik Lake, right by Portage W — the hinge between the Frozen Ocean loop and the big lake.',
+    blurb: 'On an island where the Little River meets Kejimkujik Lake — the hinge between the Frozen Ocean loop and the big lake. Portage W is a short paddle off the site: a way over to Jeremys Bay and Meadow Beach if you’d rather not cross the open water of Keji.',
   },
   {
     id: '17', label: '17', name: 'Site 17 · Channel Lake', lake: 'Channel Lake',
@@ -153,6 +156,7 @@ export const PLACES: Place[] = [
     id: '24', label: '24', name: 'Site 24 · Minards Bay', lake: 'Kejimkujik Lake (Minards Bay)',
     lat: 44.34571, lng: -65.24783, kind: 'site', access: 'paddle', bookable: true,
     blurb: 'At the top of Portage A in Minards Bay — last night on Keji Lake or first night of a southern lakes loop.',
+    carries: ['P-A'],
   },
 
   // ---- West River & lower Mersey ----------------------------------------
@@ -169,14 +173,16 @@ export const PLACES: Place[] = [
   {
     id: '23', label: '23', name: 'Site 23 · Loon Lake Falls', lake: 'Loon Lake (lower Mersey River)',
     lat: 44.32065, lng: -65.18434, kind: 'site', access: 'paddle', bookable: true,
-    blurb: 'Below Eel Weir where the Mersey opens into Loon Lake, beside the falls. Mind your approach in higher water.',
+    blurb: 'Below Eel Weir where the Mersey opens into Loon Lake, beside the falls and Portage P — the carry around the falls that you may or may not need, depending on the water level. Mind your approach in higher water.',
+    carries: ['P-P'],
   },
 
   // ---- Southern lakes ----------------------------------------------------
   {
     id: '25', label: '25', name: 'Site 25 · North Cranberry Lake', lake: 'North Cranberry Lake',
     lat: 44.33339, lng: -65.26226, kind: 'site', access: 'both', bookable: true,
-    blurb: 'At the south end of the long Portage E (the 2 km “big carry” from Minards Bay). Deep shade under a thick canopy — not a waterfront site.',
+    blurb: 'At the south end of the long Portage E — the “big carry” from Minards Bay. Deep shade under a thick canopy — not a waterfront site.',
+    carries: ['P-E'],
   },
   {
     id: '26', label: '26', name: 'Site 26 · Cobrielle Lake', lake: 'Cobrielle Lake',
@@ -187,6 +193,7 @@ export const PLACES: Place[] = [
     id: '27', label: '27', name: 'Site 27 · Cobrielle Lake', lake: 'Cobrielle Lake',
     lat: 44.31849, lng: -65.23269, kind: 'site', access: 'paddle', bookable: true,
     blurb: 'Cobrielle’s second site, right where Portage C lands on the lake.',
+    carries: ['P-C'],
   },
   {
     id: '28', label: '28', name: 'Site 28 · Peskowesk Brook', lake: 'Peskowesk Brook',
@@ -202,11 +209,13 @@ export const PLACES: Place[] = [
     id: '30', label: '30', name: 'Site 30 · Lower Silver Lake', lake: 'Hilchemakaar / Lower Silver Lake',
     lat: 44.29023, lng: -65.25251, kind: 'site', access: 'paddle', bookable: true,
     blurb: 'On the strip of land between Hilchemakaar and Lower Silver Lake, with the tent pads by Lower Silver. Two tiny portages (H & I) guard it.',
+    carries: ['P-H', 'P-I'],
   },
   {
     id: '31', label: '31', name: 'Site 31 · Peskowesk Lake', lake: 'Peskowesk Lake',
     lat: 44.31844, lng: -65.27504, kind: 'site', access: 'paddle', bookable: true,
     blurb: 'Eastern Peskowesk where Portage F arrives from North Cranberry. Watch for stiff westerlies by mid-day.',
+    carries: ['P-F'],
   },
   {
     id: '32', label: '32', name: 'Site 32 · Peskowesk Lake', lake: 'Peskowesk Lake',
@@ -222,6 +231,7 @@ export const PLACES: Place[] = [
     id: '38', label: '38', name: 'Site 38 · Peskawa Lake (east)', lake: 'Peskawa Lake',
     lat: 44.32179, lng: -65.3443, kind: 'site', access: 'both', bookable: true,
     blurb: 'Where the rocky two-stage Portage N lands on Peskawa Lake. Hikers reach it from the southern fire road, paddlers from Peskowesk.',
+    carries: ['P-N'],
   },
   {
     id: '40', label: '40', name: 'Site 40 · Peskawa Lake (west)', lake: 'Peskawa Lake',
@@ -233,7 +243,8 @@ export const PLACES: Place[] = [
   {
     id: 'W1', label: 'W1', name: 'Mason’s Cabin (W1)', lake: 'Peskawa Lake / Pebbleloggitch carry',
     lat: 44.3062, lng: -65.35247, kind: 'cabin', access: 'both', bookable: true,
-    blurb: 'The park’s storied backcountry cabin, built by the Mason family before the park existed (old Site 37). Wood stove, table, sleeps 4. A quick carry beside it drops into Pebbleloggitch Lake and the Shelburne River country.',
+    blurb: 'The park’s storied backcountry cabin, built by the Mason family before the park existed (old Site 37). Wood stove, table, sleeps 4. Portage M beside it drops into Pebbleloggitch Lake and the Shelburne River country.',
+    carries: ['P-M'],
     tips: 'Book early — it is the most wanted roof in the backcountry, summer and winter.',
   },
   {
@@ -269,7 +280,8 @@ export const PLACES: Place[] = [
   {
     id: 'bigdam', label: 'BD', name: 'Big Dam trailhead & launch', lake: 'Big Dam Lake',
     lat: 44.44489, lng: -65.2568, kind: 'launch', access: 'both',
-    blurb: 'North entrance: parking, canoe launch (Portage Q, 400 m carry from the lot) and the start of the Liberty Lake & Channel Lake trails.',
+    blurb: 'North entrance: parking, canoe launch (the Portage Q carry from the lot) and the start of the Liberty Lake & Channel Lake trails.',
+    carries: ['P-Q'],
   },
   {
     id: 'jakes', label: 'JL', name: 'Jakes Landing', lake: 'Mersey River / Kejimkujik Lake',
