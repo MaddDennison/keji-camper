@@ -141,7 +141,7 @@ leg, so it benefits from general routing). *(F11 has since shipped — PR #21.)*
 
 Unrelated to the routing thrust; small, independent wins.
 
-### F13 · Support & contribute links *(S)*
+### F13 · Support & contribute links *(S)* — ✅ shipped
 
 The app is and stays free — never a paywall, never a direct ask. But early (non-technical)
 users have offered to chip in, so give the optional "buy me a coffee" link a tasteful home,

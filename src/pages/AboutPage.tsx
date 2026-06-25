@@ -1,6 +1,4 @@
 export default function AboutPage() {
-  // TODO(v0.3 F13, docs/PLAN-v0.3.md): add a "Support & contribute" card here — an
-  // optional buy-me-a-coffee link (the app stays free) + a GitHub repo link for contributors.
   return (
     <main className="page" style={{ maxWidth: 760 }}>
       <div className="section-head">
@@ -81,6 +79,19 @@ export default function AboutPage() {
           read-only copy into their own journal), post to the cabin logbook, and invite
           friends by email. Prefer sneakernet? <b>Journal → Crew &amp; data → Export</b> still
           works: send the file to a friend and importing merges safely.
+        </p>
+      </div>
+
+      <div className="card">
+        <h3>Free — and open</h3>
+        <p className="small">
+          Keji Camper is free and always will be — no ads, no paywall, and never a charge to
+          plan a trip. If it’s saved you a soggy paper map or carried a February daydream and
+          you’d like to chip in, you can{' '}
+          <a href="https://buymeacoffee.com/maddie.denn" target="_blank" rel="noreferrer">buy me a coffee ☕</a>{' '}
+          — entirely optional, never expected. It’s also built in the open: to report a bug,
+          suggest a site, or poke at the code, the project lives on{' '}
+          <a href="https://github.com/MaddDennison/keji-camper" target="_blank" rel="noreferrer">GitHub</a>.
         </p>
       </div>
 
