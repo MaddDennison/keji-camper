@@ -110,6 +110,18 @@ prebuilt data — they snap to the GPX trail/portage tracks at runtime
 (`src/lib/routegeo.ts`). Distances are NEVER taken from this geometry;
 the published charts remain the only source of figures shown to users.
 
+### Alternative portage routings — `src/data/altroutes.json`
+
+A few legs can be paddled by more than one chain of carries (the picker in
+`src/data/legRoutes.ts`, e.g. 30→31 via G+H or the I+J loop around Lower Silver).
+The published way already has a corridor above; the alternatives are off-chart, so
+`scripts/build_alt_routes.py` A*s their water segments over the **same** OSM grid
+and stitches the real portage tracks between them. Output is keyed by sorted node
+pair + sorted carries; `npm run data:alt` regenerates it (reuses the cached
+`scripts/source/osm_water.json`). Distances on alternatives are estimates (≈) — the
+charts still own every published figure. Add a branch leg to `legRoutes.ts`, add its
+spec to `build_alt_routes.py`, rerun.
+
 ## 4. Weather — Open-Meteo
 
 - Forecast: `https://api.open-meteo.com/v1/forecast` (16 days)

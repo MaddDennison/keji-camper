@@ -161,12 +161,22 @@ export default function MapView({ selectedId, visited, routeOverlay, tripPlaceId
         if (seg.points.length < 2) continue;
         all.push(...seg.points);
         const isCarry = !!seg.portage;
+        // the carry stretches of THIS route are drawn bold so they stand out from
+        // the thin standalone portage tracks — picking a different portage routing
+        // visibly swaps which carries (and which water) the bold line follows.
+        const weight = isCarry ? 5.5 : seg.schematic ? 3 : 4.5;
+        // white casing under the solid parts so the route reads over the busy topo
+        if (!seg.schematic) {
+          L.polyline(seg.points, {
+            color: '#ffffff', weight: weight + 3, opacity: 0.7, lineCap: 'round', lineJoin: 'round',
+          }).addTo(layer);
+        }
         L.polyline(seg.points, {
-          color: isCarry ? '#b3261e' : color, // portage red matches the standalone tracks
-          weight: isCarry ? 3.4 : seg.schematic ? 3 : 4.5,
-          opacity: isCarry ? 0.95 : seg.schematic ? 0.55 : 0.9,
+          color: isCarry ? '#d11a13' : color,
+          weight,
+          opacity: isCarry ? 1 : seg.schematic ? 0.55 : 0.95,
           dashArray: isCarry ? undefined : seg.schematic ? '2 10' : leg.mode === 'hike' ? '8 6' : undefined,
-          lineCap: 'round',
+          lineCap: 'round', lineJoin: 'round',
         })
           .bindTooltip(
             isCarry

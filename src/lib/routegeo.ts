@@ -1,4 +1,5 @@
 import waterways from '../data/waterways.json';
+import altroutesRaw from '../data/altroutes.json';
 import { portageBetween } from '../data/portages';
 import { GEO, haversine, nodeCoord, portageMeters } from './mapdata';
 import type { TravelMode } from '../types';
@@ -137,10 +138,17 @@ function waterCorridor(a: string, b: string): [number, number][] | null {
 }
 
 /**
- * Geometry for one leg, given the routed chart-node path.
+ * Geometry for one leg, given the routed chart-node path. Paddle corridors are
+ * split so the carries they run along draw as red portage segments mid-leg.
+ * `highlightCarries`, when given, names the carries to mark (a branch leg pins
+ * its chosen option's portages); otherwise they're detected from the corridor.
  * Consecutive nodes without coordinates are skipped (as before).
  */
-export function legGeometry(mode: TravelMode, pathNodes: string[]): LegSegment[] {
+export function legGeometry(
+  mode: TravelMode,
+  pathNodes: string[],
+  highlightCarries?: string[],
+): LegSegment[] {
   const coords: { id: string; c: [number, number] }[] = [];
   for (const id of pathNodes) {
     const c = nodeCoord(id);
@@ -165,8 +173,58 @@ export function legGeometry(mode: TravelMode, pathNodes: string[]): LegSegment[]
     let pts: [number, number][] | null = null;
     if (mode === 'paddle') pts = waterCorridor(A.id, B.id);
     else pts = walkPath(A.c, B.c);
-    if (pts && pts.length >= 2) segs.push({ points: pts, schematic: false });
-    else segs.push({ points: [A.c, B.c], schematic: true });
+    if (pts && pts.length >= 2) {
+      if (mode === 'paddle') {
+        const ids = highlightCarries ?? carriesAlong(pts).map((h) => h.id);
+        segs.push(...segmentByCarry(pts, ids));
+      } else {
+        segs.push({ points: pts, schematic: false });
+      }
+    } else {
+      segs.push({ points: [A.c, B.c], schematic: true });
+    }
+  }
+  return segs;
+}
+
+/**
+ * Split a paddle corridor into open-water stretches and the carries it runs
+ * along, so the map shows red portage segments mid-leg (e.g. G and H on the
+ * chart-direct 29 → 30 line). `carryIds` are the portages to mark.
+ */
+function segmentByCarry(corridor: [number, number][], carryIds: string[]): LegSegment[] {
+  if (carryIds.length === 0 || corridor.length < 2) {
+    return [{ points: corridor, schematic: false }];
+  }
+  const TOL_M = 40;
+  const tracks = carryIds
+    .map((id) => GEO.portages.find((p) => `P-${p.name}` === id))
+    .filter((p): p is { name: string; points: [number, number][] } => !!p && p.points.length > 0)
+    .map((p) => ({ id: `P-${p.name}`, pts: p.points as [number, number][] }));
+  const labelAt = (pt: [number, number]): string | null => {
+    let bestId: string | null = null;
+    let bestD = TOL_M;
+    for (const t of tracks) {
+      for (const tp of t.pts) {
+        const d = haversine(pt, tp);
+        if (d < bestD) { bestD = d; bestId = t.id; }
+      }
+    }
+    return bestId;
+  };
+  const labels = corridor.map(labelAt);
+  const segs: LegSegment[] = [];
+  let i = 0;
+  while (i < corridor.length - 1) {
+    const label = labels[i];
+    let j = i;
+    while (j + 1 < corridor.length && labels[j + 1] === label) j++;
+    const end = Math.min(j + 1, corridor.length - 1); // share the boundary point with the next run
+    const points = corridor.slice(i, end + 1);
+    if (points.length >= 2) {
+      segs.push(label ? { points, schematic: false, portage: label } : { points, schematic: false });
+    }
+    i = end;
   }
   return segs;
 }
@@ -219,37 +277,39 @@ export function legCarries(mode: TravelMode, pathNodes: string[]): LegCarry[] {
   const cached = carryCache.get(key);
   if (cached) return cached;
 
-  const poly = legGeometry(mode, pathNodes).flatMap((s) => s.points);
-  const pos = new Map<string, number>();
-  for (const h of carriesAlong(poly)) pos.set(h.id, h.pos);
-  // belt-and-suspenders for fully schematic legs (no corridor to read): fall
+  // read the carries straight off the drawn geometry, so the listed carries and
+  // the red segments on the map can never disagree (both come from legGeometry).
+  const seen = new Set<string>();
+  const ids: string[] = [];
+  for (const s of legGeometry(mode, pathNodes)) {
+    if (s.portage && !seen.has(s.portage)) { seen.add(s.portage); ids.push(s.portage); }
+  }
+  // belt-and-suspenders for fully schematic legs (no corridor/track drawn): fall
   // back to the explicit node-pair links so an estimated leg still names its carry.
   for (let i = 0; i < pathNodes.length - 1; i++) {
     const link = portageBetween(pathNodes[i], pathNodes[i + 1]);
-    if (link && !pos.has(link.id)) pos.set(link.id, -1000 + i); // schematic legs: order by hop
+    if (link && !seen.has(link.id)) { seen.add(link.id); ids.push(link.id); }
   }
-  const out = [...pos.entries()]
-    .sort((a, b) => a[1] - b[1])
-    .map(([id]) => ({ id, carryM: portageMeters[id] ?? 0 }));
+  const out = ids.map((id) => ({ id, carryM: portageMeters[id] ?? 0 }));
   carryCache.set(key, out);
   return out;
 }
 
-/**
- * Geometry + rough distance for an ALTERNATIVE portage routing the charts don't
- * publish (e.g. 30→31 around Lower Silver via I+J). We stitch: paddle to the
- * first carry, walk its track, paddle to the next, and so on. Water hops are
- * straight lines (no corridor exists for an off-chart route) and the whole
- * thing is an estimate — callers flag it ≈.
- */
-export function altRouteGeometry(
-  a: string,
-  b: string,
+function permutations<T>(arr: T[]): T[][] {
+  if (arr.length <= 1) return [arr];
+  const out: T[][] = [];
+  arr.forEach((x, i) => {
+    for (const rest of permutations([...arr.slice(0, i), ...arr.slice(i + 1)])) out.push([x, ...rest]);
+  });
+  return out;
+}
+
+/** Stitch a→carry→carry→b in a fixed order; water hops are straight lines. */
+function stitchPortages(
+  A: [number, number],
+  B: [number, number],
   portages: string[],
 ): { segments: LegSegment[]; km: number } {
-  const A = nodeCoord(a);
-  const B = nodeCoord(b);
-  if (!A || !B) return { segments: [], km: 0 };
   const segments: LegSegment[] = [];
   let cursor = A;
   let metres = 0;
@@ -265,4 +325,53 @@ export function altRouteGeometry(
   segments.push({ points: [cursor, B], schematic: true }); // paddle out
   metres += haversine(cursor, B);
   return { segments, km: Math.round(metres) / 1000 };
+}
+
+// Water-following geometry for off-chart alternatives, precomputed over the OSM
+// grid by scripts/build_alt_routes.py (the charts only route the published way,
+// so no corridor exists for these). Keyed by sorted node pair + sorted carries.
+interface AltRoute {
+  from: string; // node the stored segments start at
+  segments: { points: [number, number][]; portage: string | null }[];
+  km: number;
+}
+const ALT_ROUTES = altroutesRaw as unknown as Record<string, AltRoute>;
+
+function altKey(a: string, b: string, portages: string[]): string {
+  return `${[a, b].slice().sort().join('|')}#${portages.slice().sort().join(',')}`;
+}
+
+/**
+ * Geometry + distance for an ALTERNATIVE portage routing the charts don't publish
+ * (e.g. 30→31 around Lower Silver via I+J). Prefers the water-following path built
+ * by scripts/build_alt_routes.py; falls back to a straight-line stitch through the
+ * carries' true locations (still flagged ≈ by callers) when none is precomputed.
+ */
+export function altRouteGeometry(
+  a: string,
+  b: string,
+  portages: string[],
+): { segments: LegSegment[]; km: number } {
+  const pre = ALT_ROUTES[altKey(a, b, portages)];
+  if (pre) {
+    let segs: LegSegment[] = pre.segments.map((s) => ({
+      points: s.points,
+      schematic: false,
+      ...(s.portage ? { portage: s.portage } : {}),
+    }));
+    if (pre.from !== a) {
+      segs = segs.slice().reverse().map((s) => ({ ...s, points: s.points.slice().reverse() }));
+    }
+    return { segments: segs, km: pre.km };
+  }
+
+  const A = nodeCoord(a);
+  const B = nodeCoord(b);
+  if (!A || !B) return { segments: [], km: 0 };
+  let best: { segments: LegSegment[]; km: number } | null = null;
+  for (const order of permutations(portages)) {
+    const s = stitchPortages(A, B, order);
+    if (!best || s.km < best.km) best = s;
+  }
+  return best ?? { segments: [], km: 0 };
 }
