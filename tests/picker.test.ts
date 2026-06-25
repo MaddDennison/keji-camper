@@ -21,6 +21,26 @@ describe('planLeg — branch-leg portage picker', () => {
     expect(alt.segments.some((s) => s.portage === 'P-J')).toBe(true);
   });
 
+  it('the alternative follows water (precomputed corridor), not a straight line', () => {
+    // build_alt_routes.py emits multi-point water segments between the carries;
+    // a straight-line fallback would have only 2 points per water hop.
+    const alt = planLeg('paddle', '30', '31', 1)!;
+    const water = alt.segments.filter((s) => !s.portage);
+    expect(water.some((s) => s.points.length > 2)).toBe(true);
+  });
+
+  it('reverses the stored geometry when the leg runs the other way (31 → 30)', () => {
+    const ab = planLeg('paddle', '30', '31', 1)!;
+    const ba = planLeg('paddle', '31', '30', 1)!;
+    expect(ba.km).toBeCloseTo(ab.km, 5);
+    // first point of 31→30 ≈ last point of 30→31
+    const first = ba.segments[0].points[0];
+    const lastSegPts = ab.segments[ab.segments.length - 1].points;
+    const last = lastSegPts[lastSegPts.length - 1];
+    expect(first[0]).toBeCloseTo(last[0], 4);
+    expect(first[1]).toBeCloseTo(last[1], 4);
+  });
+
   it('25 → 29 offers D (default) or F', () => {
     expect(planLeg('paddle', '25', '29', 0)!.carries.map((c) => c.id)).toEqual(['P-D']);
     expect(planLeg('paddle', '25', '29', 1)!.carries.map((c) => c.id)).toEqual(['P-F']);

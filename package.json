@@ -9,7 +9,8 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "data:geo": "python3 scripts/build_geo.py"
+    "data:geo": "python3 scripts/build_geo.py",
+    "data:alt": "python3 scripts/build_alt_routes.py"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.108.1",

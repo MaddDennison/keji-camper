@@ -1,4 +1,5 @@
 import waterways from '../data/waterways.json';
+import altroutesRaw from '../data/altroutes.json';
 import { portageBetween } from '../data/portages';
 import { GEO, haversine, nodeCoord, portageMeters } from './mapdata';
 import type { TravelMode } from '../types';
@@ -326,20 +327,44 @@ function stitchPortages(
   return { segments, km: Math.round(metres) / 1000 };
 }
 
+// Water-following geometry for off-chart alternatives, precomputed over the OSM
+// grid by scripts/build_alt_routes.py (the charts only route the published way,
+// so no corridor exists for these). Keyed by sorted node pair + sorted carries.
+interface AltRoute {
+  from: string; // node the stored segments start at
+  segments: { points: [number, number][]; portage: string | null }[];
+  km: number;
+}
+const ALT_ROUTES = altroutesRaw as unknown as Record<string, AltRoute>;
+
+function altKey(a: string, b: string, portages: string[]): string {
+  return `${[a, b].slice().sort().join('|')}#${portages.slice().sort().join(',')}`;
+}
+
 /**
- * Geometry + rough distance for an ALTERNATIVE portage routing the charts don't
- * publish (e.g. 30→31 around Lower Silver via I+J). No corridor exists for an
- * off-chart route, so we stitch: paddle to a carry, walk its real track, paddle
- * to the next. The carry order is whichever visits them in the shortest total
- * path (avoids a zig-zag); water hops are straight and the whole thing is an
- * estimate — callers flag it ≈. The line still runs through each carry's true
- * location, so picking it visibly swings the paddle route the other way.
+ * Geometry + distance for an ALTERNATIVE portage routing the charts don't publish
+ * (e.g. 30→31 around Lower Silver via I+J). Prefers the water-following path built
+ * by scripts/build_alt_routes.py; falls back to a straight-line stitch through the
+ * carries' true locations (still flagged ≈ by callers) when none is precomputed.
  */
 export function altRouteGeometry(
   a: string,
   b: string,
   portages: string[],
 ): { segments: LegSegment[]; km: number } {
+  const pre = ALT_ROUTES[altKey(a, b, portages)];
+  if (pre) {
+    let segs: LegSegment[] = pre.segments.map((s) => ({
+      points: s.points,
+      schematic: false,
+      ...(s.portage ? { portage: s.portage } : {}),
+    }));
+    if (pre.from !== a) {
+      segs = segs.slice().reverse().map((s) => ({ ...s, points: s.points.slice().reverse() }));
+    }
+    return { segments: segs, km: pre.km };
+  }
+
   const A = nodeCoord(a);
   const B = nodeCoord(b);
   if (!A || !B) return { segments: [], km: 0 };
