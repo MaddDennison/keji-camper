@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { navigate } from '../App';
 import MapView, { type RouteOverlay } from '../components/MapView';
 import PrintSheet from '../components/PrintSheet';
@@ -14,6 +14,8 @@ import { fmtHours } from '../lib/routing';
 import { encodeTripLink } from '../lib/share';
 import { renderTripCard, shareBlob } from '../lib/sharecard';
 import { applySmartModes, migrateTripModes } from '../lib/tripsmart';
+import { groupTrips } from '../lib/tripgroups';
+import { readSectionPrefs, writeSectionPref, type SectionKey } from '../lib/uiprefs';
 import { newTrip, useStore } from '../lib/store';
 import { useAuth } from '../lib/auth';
 import { AttendeeLine, useProfiles } from '../lib/useLogbook';
@@ -50,7 +52,16 @@ export default function TripsPage({ tripId }: { tripId?: string }) {
     return <TripEditor key={tripId} initial={migrateTripModes(editing)} isNew={!data.trips.some((t) => t.id === editing.id)} />;
   }
 
-  const trips = [...data.trips].sort((a, b) => (b.startDate || '').localeCompare(a.startDate || ''));
+  const groups = groupTrips(data.trips);
+  const hasTrips = data.trips.length > 0;
+
+  const cardGrid = (list: Trip[]) => (
+    <div className="grid cols-2">
+      {list.map((t) => (
+        <TripCard key={t.id} trip={t} paddleKmh={data.settings.paddleKmh} hikeKmh={data.settings.hikeKmh} />
+      ))}
+    </div>
+  );
 
   return (
     <main className="page">
@@ -60,7 +71,7 @@ export default function TripsPage({ tripId }: { tripId?: string }) {
         <button className="btn right" onClick={() => navigate('trips', 'new')}>+ New trip</button>
       </div>
 
-      {trips.length === 0 && (
+      {!hasTrips && (
         <div className="empty-state card">
           <div className="big">🛶</div>
           <p><b>No trips yet.</b></p>
@@ -68,34 +79,92 @@ export default function TripsPage({ tripId }: { tripId?: string }) {
         </div>
       )}
 
-      <div className="grid cols-2">
-        {trips.map((t) => (
-          <TripCard key={t.id} trip={t} paddleKmh={data.settings.paddleKmh} hikeKmh={data.settings.hikeKmh} />
-        ))}
-      </div>
+      {hasTrips && (
+        <>
+          <Section id="planned" title="🗺 Planned" sub="up next" count={groups.planned.length} defaultOpen>
+            {groups.planned.length > 0
+              ? cardGrid(groups.planned)
+              : <p className="small muted">nothing planned yet — dream one up or start from a classic below.</p>}
+          </Section>
 
-      <div className="section-head" style={{ marginTop: 24 }}>
-        <h2>Start from a classic</h2>
-        <span className="sub">the routes everyone does first — for good reason</span>
-      </div>
-      <div className="grid cols-2">
-        {TRIP_TEMPLATES.map((tpl) => (
-          <div key={tpl.id} className="card" style={{ marginBottom: 0 }}>
-            <div className="flex">
-              <h3 style={{ margin: 0 }}>{tpl.emoji} {tpl.name}</h3>
-              <span className="chip muted right">{tpl.nights} night{tpl.nights === 1 ? '' : 's'}</span>
+          {groups.dream.length > 0 && (
+            <Section id="dream" title="💭 Dreaming" count={groups.dream.length} defaultOpen>
+              {cardGrid(groups.dream)}
+            </Section>
+          )}
+
+          <Section id="completed" title="✅ Completed" count={groups.completed.length} defaultOpen={false}>
+            {groups.completed.length > 0
+              ? cardGrid(groups.completed)
+              : <p className="small muted">no completed trips yet.</p>}
+          </Section>
+        </>
+      )}
+
+      {/* Data-dependent default: the classics guide the first trip, then get out
+          of the way once real trips exist. A persisted user toggle always wins. */}
+      <Section
+        id="classics"
+        title="Start from a classic"
+        sub="the routes everyone does first — for good reason"
+        count={TRIP_TEMPLATES.length}
+        defaultOpen={!hasTrips}
+      >
+        <div className="grid cols-2">
+          {TRIP_TEMPLATES.map((tpl) => (
+            <div key={tpl.id} className="card" style={{ marginBottom: 0 }}>
+              <div className="flex">
+                <h3 style={{ margin: 0 }}>{tpl.emoji} {tpl.name}</h3>
+                <span className="chip muted right">{tpl.nights} night{tpl.nights === 1 ? '' : 's'}</span>
+              </div>
+              <p className="small muted" style={{ margin: '6px 0' }}>
+                {tpl.stops.map(placeName).join(' → ')}
+              </p>
+              <p className="small">{tpl.blurb}</p>
+              <button className="btn secondary small" onClick={() => navigate('trips', `tpl-${tpl.id}`)}>
+                Use this route
+              </button>
             </div>
-            <p className="small muted" style={{ margin: '6px 0' }}>
-              {tpl.stops.map(placeName).join(' → ')}
-            </p>
-            <p className="small">{tpl.blurb}</p>
-            <button className="btn secondary small" onClick={() => navigate('trips', `tpl-${tpl.id}`)}>
-              Use this route
-            </button>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      </Section>
     </main>
+  );
+}
+
+function Section({ id, title, sub, count, defaultOpen, children }: {
+  id: SectionKey;
+  title: string;
+  sub?: string;
+  count: number;
+  defaultOpen: boolean;
+  children: ReactNode;
+}) {
+  const [open, setOpen] = useState(() => readSectionPrefs()[id] ?? defaultOpen);
+  const toggle = () => {
+    const next = !open;
+    setOpen(next);
+    writeSectionPref(id, next);
+  };
+  return (
+    <>
+      <div className="section-head">
+        <h2>
+          <button
+            type="button"
+            className="section-toggle"
+            aria-expanded={open}
+            aria-controls={`sect-${id}`}
+            onClick={toggle}
+          >
+            {title} <span className="chip muted">{count}</span>
+            <span className="legend-caret" aria-hidden="true">{open ? '▾' : '▸'}</span>
+          </button>
+        </h2>
+        {sub && <span className="sub">{sub}</span>}
+      </div>
+      {open && <div id={`sect-${id}`}>{children}</div>}
+    </>
   );
 }
 

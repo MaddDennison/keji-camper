@@ -167,6 +167,13 @@ main.page.full {
 }
 .section-head h2 { margin: 0; font-size: 1.35rem; }
 .section-head .sub { color: var(--ink-soft); font-size: 0.85rem; }
+.section-head .section-toggle {
+  background: none; border: none; padding: 0; margin: 0;
+  font: inherit; color: inherit; cursor: pointer;
+  display: inline-flex; align-items: baseline; gap: 8px; text-align: left;
+}
+.section-head .section-toggle .chip { text-transform: none; }
+.section-head .section-toggle .legend-caret { color: var(--ink-soft); font-size: 1rem; }
 
 .btn {
   background: var(--rust); color: #fff; border: 2px solid var(--rust-deep);
