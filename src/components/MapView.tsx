@@ -2,6 +2,7 @@ import L from 'leaflet';
 import { useEffect, useRef, useState } from 'react';
 import { PORTAGE_NAMES } from '../data/distances';
 import { PLACES } from '../data/sites';
+import { TOPORAMA_WMS } from '../lib/basemaps';
 import { fmtCarry } from '../lib/format';
 import { GEO, portageMeters } from '../lib/mapdata';
 import { legGeometry, type LegSegment } from '../lib/routegeo';
@@ -66,10 +67,7 @@ export default function MapView({ selectedId, visited, routeOverlay, tripPlaceId
     });
     mapRef.current = map;
 
-    const topo = L.tileLayer(
-      'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}',
-      { maxZoom: 17, attribution: 'Tiles © Esri — Esri, USGS, NOAA' },
-    ).addTo(map);
+    const topo = L.tileLayer.wms(TOPORAMA_WMS.url, TOPORAMA_WMS.params).addTo(map);
     const streets = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
       attribution: '© OpenStreetMap contributors',
@@ -111,7 +109,7 @@ export default function MapView({ selectedId, visited, routeOverlay, tripPlaceId
 
     L.control
       .layers(
-        { 'Topo (Esri)': topo, Streets: streets, Satellite: sat },
+        { 'Topo (NRCan)': topo, Streets: streets, Satellite: sat },
         { 'Park boundary': boundary, Trails: trails, Portages: portages },
         { collapsed: true },
       )
