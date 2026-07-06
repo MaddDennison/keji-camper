@@ -60,7 +60,8 @@ export default function AboutPage() {
             44.4° N. Kejimkujik has been an RASC Dark-Sky Preserve since 2010.
           </li>
           <li>
-            <b>Map tiles</b>: Esri World Topo / Imagery and OpenStreetMap contributors.
+            <b>Map tiles</b>: Toporama © Natural Resources Canada (Open Government
+            Licence – Canada), Esri World Imagery, and OpenStreetMap contributors.
           </li>
         </ul>
         <p className="tiny muted">
