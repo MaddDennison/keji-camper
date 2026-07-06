@@ -182,7 +182,28 @@ Distances and times always come from the charts, never from this geometry.
 - **PWA shell**: `public/sw.js` caches same-origin assets stale-while-
   revalidate so the app opens offline; tiles and weather stay network-only.
 
-## 8. Testing & CI
+## 7c. Printable topo map packs (v1)
+
+- **What**: `#/mappack/<tripId>` renders a cover/overview sheet plus one
+  landscape-Letter topo sheet per travel day; users print (or Save-as-PDF)
+  through the browser dialog. Design + the adversarial findings that shaped it:
+  `Plans/TOPO-MAP-PACK.md`.
+- **Page math** (`src/lib/mappack.ts`, pure, tested in `tests/mappack.test.ts`):
+  each sheet is ONE NRCan Toporama WMS GetMap image (OGL-Canada). The request
+  must be DPI-consistent — px from the physical window at 300 dpi, bbox from
+  the scale, `MAP_RESOLUTION=300` — or the server styles labels for a screen
+  and they print ~1 mm tall. Day rungs 1:25k/50k/100k (25k floor, flagged —
+  never silent — clipping past the top), cover rungs up to 1:250k.
+- **Page** (`src/pages/MapPackPage.tsx`): images arrive via
+  fetch+AbortController (15 s) so a hung request is diagnosable and retryable;
+  the print CTA gates on every page loading and an unready page renders a
+  do-not-print placeholder that also prints. Route overlay is grayscale-
+  redundant (casing + dash + lettered carry badges), every sheet carries scale
+  bar/declination/legend/attribution and the shared emergency block
+  (`src/lib/emergency.ts`, single source with PrintSheet). The landscape
+  `@page` rule is injected only while the route is mounted so the legacy
+  PrintSheet keeps the browser's default page setup; print CSS is scoped under
+  `body.mappack-print` and the global print block is untouched.
 
 - `tests/routing.test.ts` — chart shape invariants, exact-value guarantees,
   cross-chart stitching sanity, mode coverage, symmetry.

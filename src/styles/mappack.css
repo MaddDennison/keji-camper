@@ -1,0 +1,140 @@
+/* ============================================================
+   Map pack sheets (v1) — screen preview + landscape-Letter print.
+   Print rules are scoped under body.mappack-print (set while the
+   route is mounted); the legacy .print-sheet block in global.css
+   is deliberately untouched. The @page rule is injected by the
+   page component so it can't leak into other routes' printing.
+   ============================================================ */
+
+main.mappack {
+  /* must match WINDOWS.landscape in lib/mappack.ts (see its comment) */
+  --mp-map-w: 255mm;
+  --mp-map-h: 135mm;
+  padding: 12px 14px calc(var(--nav-h) + 20px);
+  max-width: 1160px;
+  margin: 0 auto;
+}
+
+.mp-toolbar {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+.mp-toolbar .right { margin-left: auto; }
+.mp-guidance { font-size: 0.85rem; color: var(--ink-soft); max-width: 380px; }
+
+/* ---------- sheet: fixed Letter-landscape geometry ---------- */
+.mp-sheet {
+  width: 279.4mm;
+  height: 215.9mm;
+  padding: 9mm 12.2mm 7mm;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  color: #2e2a22;
+  font-family: Georgia, 'Iowan Old Style', serif;
+  page-break-after: always;
+  break-after: page;
+}
+
+.mp-sheet header {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 6mm;
+  border-bottom: 2.5px solid #2e2a22;
+  padding-bottom: 1.6mm; margin-bottom: 2mm;
+}
+.mp-day { font-size: 16pt; font-weight: bold; color: #9c4220; }
+.mp-trip { font-size: 13pt; font-weight: bold; }
+.mp-legline { font-size: 9.5pt; }
+.mp-warn { color: #7a1610; }
+.mp-stats { font-size: 9.5pt; text-align: right; flex: none; max-width: 90mm; }
+
+.mp-mapwin {
+  position: relative;
+  width: var(--mp-map-w); height: var(--mp-map-h);
+  border: 1.5px solid #2e2a22;
+  overflow: hidden;
+  flex: none;
+}
+.mp-mapwin > img, .mp-mapwin > svg {
+  position: absolute; inset: 0;
+  width: var(--mp-map-w); height: var(--mp-map-h);
+}
+.mp-cover-body .mp-mapwin { height: 110mm; }
+.mp-cover-body .mp-mapwin > img, .mp-cover-body .mp-mapwin > svg { height: 110mm; }
+
+.mp-map-missing {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3mm;
+  background: repeating-linear-gradient(45deg, #f6f2e8, #f6f2e8 12px, #efe8d6 12px, #efe8d6 24px);
+  font-size: 12pt; text-align: center; padding: 8mm;
+}
+.mp-noprint-note { color: #7a1610; font-weight: bold; }
+
+.mp-attr {
+  position: absolute; right: 1.5mm; bottom: 1mm;
+  font-size: 6.5pt; background: rgba(255, 255, 255, 0.87);
+  padding: 0.4mm 1mm;
+}
+.mp-clip-banner {
+  position: absolute; left: 0; right: 0; top: 0;
+  background: rgba(122, 22, 16, 0.92); color: #fff;
+  font-size: 8.5pt; font-weight: bold; text-align: center; padding: 1mm;
+}
+
+/* cover: map + itinerary share the column */
+.mp-cover-body { display: flex; flex-direction: column; gap: 2mm; min-height: 0; }
+.mp-itinerary { width: var(--mp-map-w); border-collapse: collapse; font-size: 8pt; }
+.mp-itinerary th, .mp-itinerary td { border: 0.35mm solid #444; padding: 0.8mm 1.6mm; text-align: left; }
+.mp-itinerary th { background: #f4ecd8; }
+
+/* ---------- footer furniture ---------- */
+.mp-sheet footer {
+  margin-top: 2.2mm;
+  display: flex; gap: 5mm; align-items: flex-start;
+  font-size: 7.5pt; line-height: 1.35;
+}
+.mp-scalebox { flex: 0 0 88mm; }
+.mp-honesty { font-weight: bold; color: #7a1610; }
+.mp-bar { display: flex; height: 2.6mm; border: 0.4mm solid #2e2a22; margin: 1mm 0 0.6mm; }
+.mp-bar div { flex: 1; }
+.mp-ticks { display: flex; justify-content: space-between; font-size: 7pt; }
+.mp-north { flex: 0 0 28mm; text-align: center; font-size: 7.5pt; }
+.mp-legend {
+  flex: 1; display: flex; flex-wrap: wrap; gap: 1.2mm 4mm; align-items: center; font-size: 8pt;
+}
+.mp-legend span { display: inline-flex; align-items: center; gap: 1.6mm; }
+.mp-emergency {
+  flex: 0 0 62mm;
+  border: 0.4mm solid #2e2a22; background: #f4ecd8;
+  padding: 1.4mm 2mm;
+}
+
+/* ---------- screen preview ---------- */
+@media screen {
+  .mp-sheet {
+    zoom: 0.62;
+    margin: 0 auto 22px;
+    box-shadow: var(--shadow-lg);
+    border: 1px solid var(--ink-soft);
+  }
+  @media (max-width: 879px) {
+    main.mappack { overflow-x: auto; }
+    .mp-sheet { zoom: 0.34; margin-bottom: 14px; }
+  }
+}
+
+/* ---------- print ---------- */
+@media print {
+  body.mappack-print { background: #fff !important; background-image: none !important; }
+  /* the pack is the whole document: hide the rest of the shell (topbar, auth,
+     banners, tabbar) without touching the global print rules */
+  body.mappack-print #root > *:not(main.mappack) { display: none !important; }
+  body.mappack-print main.mappack { padding: 0; max-width: none; margin: 0; }
+  body.mappack-print .mp-toolbar,
+  body.mappack-print .mp-screen-only { display: none !important; }
+  body.mappack-print .mp-sheet {
+    zoom: 1;
+    margin: 0; box-shadow: none; border: none;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+}
