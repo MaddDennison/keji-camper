@@ -441,6 +441,18 @@ function TripEditor({ initial, isNew }: { initial: Trip; isNew: boolean }) {
               🖨 Print
             </button>
             <button
+              className="btn ghost small" disabled={isNew || !canSave}
+              title={isNew ? 'Save the trip first — the map pack renders the saved trip' : 'Printable topo maps: overview + one page per day'}
+              onClick={() => {
+                // the pack renders the SAVED trip — don't silently print stale edits
+                if (JSON.stringify(trip) !== JSON.stringify(initial)
+                  && !confirm('You have unsaved changes — the map pack shows the last saved version. Continue?')) return;
+                navigate('mappack', trip.id);
+              }}
+            >
+              🗺 Map pack
+            </button>
+            <button
               className="btn ghost small" disabled={!canSave}
               onClick={async () => {
                 const url = await encodeTripLink(trip);

@@ -1,5 +1,6 @@
 import { moonInfo, sunTimes } from '../lib/astro';
 import { placeById } from '../data/sites';
+import { EMERGENCY_LINES, EMERGENCY_NOTE } from '../lib/emergency';
 import { addDaysIso, fmtCarry, fmtDate, fmtKm, fmtTime } from '../lib/format';
 import { planLeg } from '../lib/legplan';
 import { fmtHours } from '../lib/routing';
@@ -96,10 +97,10 @@ export default function PrintSheet({
 
       <h2>Emergency</h2>
       <ul>
-        <li>Emergencies: <b>911</b></li>
-        <li>Parks Canada 24-h emergency dispatch: <b>1-877-852-3100</b></li>
-        <li>Kejimkujik Visitor Centre: 902-682-2772</li>
-        <li>Cell coverage in the backcountry is unreliable — file this float plan before you launch.</li>
+        {EMERGENCY_LINES.map((l) => (
+          <li key={l.label}>{l.label}: {l.bold ? <b>{l.value}</b> : l.value}</li>
+        ))}
+        <li>{EMERGENCY_NOTE}</li>
       </ul>
 
       <p className="print-foot">

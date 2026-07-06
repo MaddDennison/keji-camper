@@ -9,6 +9,7 @@ import AboutPage from './pages/AboutPage';
 import SharedTripPage from './pages/SharedTripPage';
 import AdminPage from './pages/AdminPage';
 import LogbookPage from './pages/LogbookPage';
+import MapPackPage from './pages/MapPackPage';
 import AuthBar, { NoticeBanner } from './components/AuthBar';
 
 const TABS = [
@@ -20,7 +21,7 @@ const TABS = [
   { id: 'about', label: 'About', icon: <IconInfo /> },
 ] as const;
 
-type TabId = (typeof TABS)[number]['id'] | 'view' | 'admin' | 'logbook';
+type TabId = (typeof TABS)[number]['id'] | 'view' | 'admin' | 'logbook' | 'mappack';
 
 function parseHash(): { tab: TabId; param?: string } {
   const h = window.location.hash.replace(/^#\/?/, '');
@@ -28,6 +29,7 @@ function parseHash(): { tab: TabId; param?: string } {
   if (tab === 'view' && param) return { tab: 'view', param };
   if (tab === 'admin') return { tab: 'admin' };
   if (tab === 'logbook') return { tab: 'logbook' };
+  if (tab === 'mappack' && param) return { tab: 'mappack', param };
   if (TABS.some((t) => t.id === tab)) return { tab: tab as TabId, param };
   return { tab: 'map' };
 }
@@ -56,6 +58,7 @@ export default function App() {
       case 'view': return <SharedTripPage payload={route.param!} />;
       case 'admin': return <AdminPage />;
       case 'logbook': return <LogbookPage />;
+      case 'mappack': return <MapPackPage tripId={route.param!} />;
     }
   })();
 
