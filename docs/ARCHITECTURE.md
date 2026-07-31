@@ -4,7 +4,7 @@
 
 | Layer | Choice | Why |
 |---|---|---|
-| Build | Vite 5 + TypeScript 5 | fast, zero-config, `base: './'` makes the bundle host-agnostic |
+| Build | Vite 7 + TypeScript 5 | fast, zero-config, `base: './'` makes the bundle host-agnostic |
 | UI | React 18 (no router lib) | hash-based routing in ~30 lines keeps deps minimal |
 | Map | Leaflet 1.9 (vanilla, thin React wrapper) | full control over markers/overlays, no react-leaflet version coupling |
 | State | hand-rolled reducer + Context, persisted to `localStorage` | the entire app state is one serializable document |
