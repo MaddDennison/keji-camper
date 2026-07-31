@@ -1,0 +1,25 @@
+version: 2
+
+# Keep the toolchain patched without a human remembering to run `npm audit`.
+# Every advisory this repo has ever had lived in the dev toolchain (vite,
+# vitest, esbuild, postcss), so the grouped weekly PR is usually a one-click
+# merge once CI (npm test + npm run build) is green.
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      # One PR per ecosystem-half keeps the noise down: runtime deps ship to
+      # users and deserve a look, dev deps only affect CI and local work.
+      dev-dependencies:
+        dependency-type: development
+      production-dependencies:
+        dependency-type: production
+
+  # Pinned action majors (checkout@v4, setup-node@v4, …) go stale silently.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
