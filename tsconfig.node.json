@@ -10,7 +10,12 @@
     "isolatedModules": true,
     "moduleDetection": "force",
     "noEmit": true,
-    "strict": true
+    "strict": true,
+    // vite.config.ts reads process.env to name the Supabase origin in the CSP.
+    "types": ["node"]
   },
-  "include": ["vite.config.ts"]
+  // The two src modules the config imports have to be listed explicitly: the
+  // policy and the Supabase URL normalizer are shared with the app, not
+  // duplicated for build time.
+  "include": ["vite.config.ts", "src/lib/csp.ts", "src/lib/supabaseUrl.ts"]
 }

@@ -205,6 +205,31 @@ Distances and times always come from the charts, never from this geometry.
   PrintSheet keeps the browser's default page setup; print CSS is scoped under
   `body.mappack-print` and the global print block is untouched.
 
+## 8. Content-Security-Policy
+
+- **Where it lives**: `src/lib/csp.ts` builds the policy string; the `csp()`
+  plugin in `vite.config.ts` injects it as a `<meta http-equiv>` at build
+  time. GitHub Pages serves static files and can't set response headers, so
+  meta is the only delivery mechanism available. Two consequences: it's
+  build-only (the dev server needs inline react-refresh scripts and the HMR
+  socket), and `frame-ancestors` is silently ignored — that one is header-only,
+  so clickjacking protection would need a host that sets headers.
+- **Shape**: `default-src 'none'` with explicit openings. Scripts and the
+  service worker are `'self'` with no `'unsafe-inline'` (Vite emits no inline
+  script in the built HTML). `style-src` keeps `'unsafe-inline'` for React
+  `style={{…}}` props and the inline styles Leaflet writes onto panes.
+  `img-src` adds `data:` (journal photos) and `blob:` (share cards, map-pack
+  sheets) alongside the three tile hosts.
+- **The Supabase source** comes from `VITE_SUPABASE_URL` through the same
+  `normalizeSupabaseUrl()` the client uses — a URL pasted with a trailing
+  `/rest/v1` would otherwise produce a source that doesn't match the requests
+  supabase-js makes. When the env var is unset the client is `null` and no
+  Supabase origin is named at all.
+- **Drift guard**: `tests/csp.test.ts` scans `MapView.tsx` and `weather.ts`
+  for https origins and fails if any is missing from the policy, so a new tile
+  host or API added to the app surfaces at test time rather than as a blocked
+  request in someone's browser.
+
 - `tests/routing.test.ts` — chart shape invariants, exact-value guarantees,
   cross-chart stitching sanity, mode coverage, symmetry.
 - `tests/astro.test.ts` — known new/full moons, solstice sunset window, shower
